@@ -176,7 +176,7 @@ export default function Home() {
       // On se connecte à VOTRE usine déjà déployée
       const factoryContract = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
       
-      const fee = ethers.parseEther("0.0001");
+      const fee = ethers.parseEther("0.00001");
       let tx;
 
       // On appelle la bonne fonction selon l'onglet choisi
