@@ -46,7 +46,7 @@ export default function Sidebar() {
           onClick={() => router.push('/')}
           className={`w-full flex items-center py-2.5 rounded-lg transition-colors ${isHome ? 'bg-indigo-500/10 text-indigo-400' : 'text-slate-400 hover:bg-slate-800/50'} ${isCollapsed ? 'justify-center px-0' : 'px-3 text-sm font-medium'}`}
         >
-          <img src="/icons/home.png" className="w-5 h-5" alt="Home" />
+          <i className="fi fi-rr-home text-xl"></i>
           {!isCollapsed && <span className="ml-3">Accueil</span>}
         </button>
 
@@ -55,7 +55,7 @@ export default function Sidebar() {
           onClick={() => router.push('/forge?tab=message')}
           className={`w-full flex items-center py-2.5 rounded-lg transition-colors ${currentTab === 'message' ? 'bg-indigo-500/10 text-indigo-400' : 'text-slate-400 hover:bg-slate-800/50'} ${isCollapsed ? 'justify-center px-0' : 'px-3 text-sm font-medium'}`}
         >
-          <img src="/icons/message.png" className="w-5 h-5" alt="Message" />
+          <i className="fi fi-rr-edit text-xl"></i>
           {!isCollapsed && <span className="ml-3">Message On-Chain</span>}
         </button>
 
@@ -64,7 +64,7 @@ export default function Sidebar() {
           onClick={() => router.push('/forge?tab=token')}
           className={`w-full flex items-center py-2.5 rounded-lg transition-colors ${currentTab === 'token' ? 'bg-indigo-500/10 text-indigo-400' : 'text-slate-400 hover:bg-slate-800/50'} ${isCollapsed ? 'justify-center px-0' : 'px-3 text-sm font-medium'}`}
         >
-          <img src="/icons/token.png" className="w-5 h-5" alt="Token" />
+          <i className="fi fi-rr-coins text-xl"></i>
           {!isCollapsed && <span className="ml-3">Token ERC-20</span>}
         </button>
 
@@ -73,7 +73,7 @@ export default function Sidebar() {
           onClick={() => router.push('/forge?tab=nft')}
           className={`w-full flex items-center py-2.5 rounded-lg transition-colors ${currentTab === 'nft' ? 'bg-indigo-500/10 text-indigo-400' : 'text-slate-400 hover:bg-slate-800/50'} ${isCollapsed ? 'justify-center px-0' : 'px-3 text-sm font-medium'}`}
         >
-          <img src="/icons/nft.png" className="w-5 h-5" alt="NFT" />
+          <i className="fi fi-rr-picture text-xl"></i>
           {!isCollapsed && <span className="ml-3">Collection NFT</span>}
         </button>
 
