@@ -8,7 +8,7 @@ import { ethers } from 'ethers';
 // ==========================================
 // ⚠️ 1. COLLEZ L'ADRESSE DE VOTRE USINE ICI
 // ==========================================
-const FACTORY_ADDRESS = "0xc67FFF60EaE0150A2ebe4f4a40643A27209444DA";
+const FACTORY_ADDRESS = "0x2e4a6467C53103Ea0113A46c67b5D99912B6c60a";
 
 // ==========================================
 // ⚠️ 2. COLLEZ L'ABI DE FORGENIXFACTORY ICI
