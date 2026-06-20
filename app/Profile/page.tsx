@@ -52,6 +52,7 @@ export default function ProfilePage() {
 
   
   // 3. LE MOTEUR DU GRAPHIQUE (Simplifié avec les périodes natives Zerion)
+  // 3. LE MOTEUR DU GRAPHIQUE (Propulsé par PostgreSQL)
   useEffect(() => {
     if (!address) return;
 
@@ -66,29 +67,12 @@ export default function ProfilePage() {
         if (res.ok) {
           const json = await res.json();
           
-          // 1. Extraire le Solde Total en USD depuis le portfolio
-          let currentBalance = 0;
-          if (json.portfolioData?.data?.attributes?.total?.positions !== undefined) {
-             currentBalance = json.portfolioData.data.attributes.total.positions;
-          } else if (json.chartData?.data?.attributes?.charts?.length > 0) {
-             const charts = json.chartData.data.attributes.charts;
-             currentBalance = charts[charts.length - 1][1];
-          }
-          setTotalBalance(currentBalance);
+          // L'API nous donne directement le solde final et propre
+          setTotalBalance(json.totalBalance);
 
-          // 2. Extraire et formatter le Graphique natif
-          const attrs = json.chartData?.data?.attributes;
-          
-          // Sécurité absolue : on vérifie tous les formats possibles que Zerion pourrait renvoyer
-          let zerionDataPoints = attrs?.charts || attrs?.points || attrs?.chart || attrs?.history || [];
-
-          if (zerionDataPoints.length > 0) {
-            const formattedData = zerionDataPoints.map((point: any) => {
-               // Gère les deux formats possibles de Zerion : tableau [timestamp, balance] ou objet {timestamp, value}
-               const timestamp = Array.isArray(point) ? point[0] : (point?.timestamp || point?.time || 0);
-               const balanceValue = Array.isArray(point) ? point[1] : (point?.value || point?.balance || 0);
-               
-               const dateObj = new Date(timestamp * 1000);
+          if (json.chartData && json.chartData.length > 0) {
+            const formattedData = json.chartData.map((point: any) => {
+               const dateObj = new Date(point.timestamp);
                
                let dateString = "";
                if (timeframe === '1J') {
@@ -101,12 +85,11 @@ export default function ProfilePage() {
 
                return {
                   date: dateString,
-                  balance: parseFloat(Number(balanceValue).toFixed(2))
+                  balance: point.balance
                };
             });
 
-            // Recharts a besoin d'au moins 2 points pour dessiner une Area. 
-            // Si le portefeuille est très récent et n'a qu'un point, on le duplique pour tracer une ligne plate.
+            // Dessin du graphique
             if (formattedData.length === 1) {
                 const dummyPoint = { ...formattedData[0], date: 'Début' };
                 setChartData([dummyPoint, formattedData[0]]);
@@ -118,7 +101,7 @@ export default function ProfilePage() {
           }
         }
       } catch (error) {
-        console.error("Erreur de récupération de l'historique :", error);
+        console.error("Erreur de récupération de PostgreSQL :", error);
       }
     };
 
