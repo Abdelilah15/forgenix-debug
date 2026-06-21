@@ -94,7 +94,6 @@ export async function POST(request: Request) {
         else if (timeframe === '1M') limitDate.setMonth(now.getMonth() - 1);
         else if (timeframe === '3M') limitDate.setMonth(now.getMonth() - 3);
         else if (timeframe === '1A') limitDate.setFullYear(now.getFullYear() - 1);
-        
 
         const dbSnapshots = await prisma.portfolioSnapshot.findMany({
             where: { 

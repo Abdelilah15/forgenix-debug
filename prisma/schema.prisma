@@ -2,8 +2,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// prisma/schema.prisma
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
 }
 
 // La table de notre Indexeur qui stockera l'historique exact
