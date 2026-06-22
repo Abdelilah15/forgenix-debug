@@ -11,53 +11,18 @@ export async function POST(request: Request) {
         const headers = { 'accept': 'application/json', 'authorization': `Basic ${encodedKey}` };
         const safeAddress = address.toLowerCase();
 
-        // 1. INITIALISATION DE L'HISTORIQUE (On le fait en PREMIER)
-        const existingHistoryCount = await prisma.portfolioSnapshot.count({
-            where: { address: safeAddress }
-        });
-
-        // S'il n'y a qu'un seul point (ou moins de 10), c'est qu'il y a eu un bug. On nettoie et on recharge.
-        if (existingHistoryCount < 10) {
-            await prisma.portfolioSnapshot.deleteMany({ where: { address: safeAddress } });
-            
-            try {
-                // RESTAURATION : filter[positions]=no_filter pour inclure TOUS les tokens
-                const chartRes = await fetch(`https://api.zerion.io/v1/wallets/${address}/charts/year?currency=usd&filter[positions]=no_filter`, { headers });
-                
-                if (chartRes.ok) {
-                    const chartData = await chartRes.json();
-                    const points = chartData.data?.attributes?.charts || [];
-                    
-                    if (points.length > 0) {
-                        const snapshotsToInsert = points.map((p: any) => ({
-                            address: safeAddress,
-                            timestamp: new Date(p[0] * 1000),
-                            balance: parseFloat(Number(p[1]).toFixed(2))
-                        }));
-
-                        await prisma.portfolioSnapshot.createMany({
-                            data: snapshotsToInsert,
-                            skipDuplicates: true,
-                        });
-                    }
-                }
-            } catch (e) {
-                console.error("Erreur téléchargement historique", e);
-            }
-        }
-
-        // 2. MISE À JOUR DU SOLDE ACTUEL (En second)
+        // 1. MISE À JOUR DU SOLDE ACTUEL (STRICTEMENT LES JETONS)
         let liveBalance = 0;
         try {
-            // RESTAURATION : filter[positions]=no_filter pour retrouver exactement les 38$
-            const portfolioRes = await fetch(`https://api.zerion.io/v1/wallets/${address}/portfolio?currency=usd&filter[positions]=no_filter`, { headers });
+            // L'API par défaut (sans no_filter) exclut automatiquement les spams et petits restes
+            const portfolioRes = await fetch(`https://api.zerion.io/v1/wallets/${safeAddress}/portfolio?currency=usd`, { headers });
             if (portfolioRes.ok) {
                 const portfolioData = await portfolioRes.json();
                 const totalObj = portfolioData.data?.attributes?.total;
                 
                 if (totalObj) {
-                    // On additionne explicitement les actifs positifs pour éviter de soustraire des dettes
-                    liveBalance = (Number(totalObj.positions) || 0) + (Number(totalObj.staked) || 0) + (Number(totalObj.deposited) || 0);
+                    // On cible UNIQUEMENT la valeur des jetons dans le portefeuille ("positions")
+                    liveBalance = Number(totalObj.positions) || 0;
                     liveBalance = parseFloat(liveBalance.toFixed(2));
 
                     if (liveBalance > 0) {
@@ -85,7 +50,44 @@ export async function POST(request: Request) {
             console.error("Erreur fetch live portfolio", e);
         }
 
-        // 3. RÉPONSE AU GRAPHIQUE
+        // 2. GESTION DE L'HISTORIQUE VÉRITABLE (SANS FAUSSES DONNÉES)
+        const existingHistoryCount = await prisma.portfolioSnapshot.count({
+            where: { address: safeAddress }
+        });
+
+        // 👈 On utilise < 400 pour forcer la suppression des 365 faux points générés tout à l'heure !
+        if (existingHistoryCount < 400) {
+            await prisma.portfolioSnapshot.deleteMany({ where: { address: safeAddress } });
+            
+            try {
+                // Téléchargement de l'historique strict (Jetons uniquement, pas de NFTs ni de spams)
+                const chartRes = await fetch(`https://api.zerion.io/v1/wallets/${safeAddress}/charts/max?currency=usd`, { headers });
+                
+                if (chartRes.ok) {
+                    const chartData = await chartRes.json();
+                    const points = chartData.data?.attributes?.charts || [];
+                    
+                    if (points.length > 0) {
+                        const snapshotsToInsert = points.map((p: any) => ({
+                            address: safeAddress,
+                            timestamp: new Date(p[0] * 1000),
+                            balance: parseFloat(Number(p[1]).toFixed(2))
+                        }));
+
+                        await prisma.portfolioSnapshot.createMany({
+                            data: snapshotsToInsert,
+                            skipDuplicates: true,
+                        });
+                    }
+                    // Le générateur de fausses données a été totalement supprimé. 
+                    // S'il n'y a pas d'historique réel, le graphique utilisera uniquement les vraies données à partir d'aujourd'hui.
+                }
+            } catch (e) {
+                console.error("Erreur historique", e);
+            }
+        }
+
+        // 3. PRÉPARATION DES DONNÉES POUR LE GRAPHIQUE
         const now = new Date();
         let limitDate = new Date(0); 
         
@@ -94,6 +96,7 @@ export async function POST(request: Request) {
         else if (timeframe === '1M') limitDate.setMonth(now.getMonth() - 1);
         else if (timeframe === '3M') limitDate.setMonth(now.getMonth() - 3);
         else if (timeframe === '1A') limitDate.setFullYear(now.getFullYear() - 1);
+        else if (timeframe === 'Max') limitDate = new Date(0); 
 
         const dbSnapshots = await prisma.portfolioSnapshot.findMany({
             where: { address: safeAddress, timestamp: { gte: limitDate } },

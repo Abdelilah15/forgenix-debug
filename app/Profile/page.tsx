@@ -11,7 +11,7 @@ interface UserProfile {
   address: string;
   role: string;
   avatar: string;
-  joinedAt: string; 
+  joinedAt: string;
 }
 
 export default function ProfilePage() {
@@ -27,7 +27,7 @@ export default function ProfilePage() {
 
   // NOUVEAU : ÉTATS DU GRAPHIQUE ET SOLDE TOTAL USD
   const [timeframe, setTimeframe] = useState('1M');
-  const [chartData, setChartData] = useState<{date: string, balance: number}[]>([]);
+  const [chartData, setChartData] = useState<{ date: string, balance: number }[]>([]);
   const [totalBalance, setTotalBalance] = useState<number | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -50,7 +50,7 @@ export default function ProfilePage() {
     if (isConnected) fetchUser();
   }, [address, isConnected]);
 
-  
+
   // 3. LE MOTEUR DU GRAPHIQUE (Simplifié avec les périodes natives Zerion)
   // 3. LE MOTEUR DU GRAPHIQUE (Propulsé par PostgreSQL)
   useEffect(() => {
@@ -66,35 +66,48 @@ export default function ProfilePage() {
 
         if (res.ok) {
           const json = await res.json();
-          
+
           // L'API nous donne directement le solde final et propre
           setTotalBalance(json.totalBalance);
 
           if (json.chartData && json.chartData.length > 0) {
             const formattedData = json.chartData.map((point: any) => {
-               const dateObj = new Date(point.timestamp);
-               
-               let dateString = "";
-               if (timeframe === '1J') {
-                   dateString = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-               } else if (timeframe === '1S' || timeframe === '1M' || timeframe === '3M') {
-                   dateString = dateObj.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-               } else {
-                   dateString = dateObj.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
-               }
+              const dateObj = new Date(point.timestamp);
 
-               return {
-                  date: dateString,
-                  balance: point.balance
-               };
+              let dateString = "";
+              if (timeframe === '1J') {
+                dateString = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+              } else if (timeframe === '1S' || timeframe === '1M' || timeframe === '3M') {
+                dateString = dateObj.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+              } else {
+                dateString = dateObj.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+              }
+
+              return {
+                date: dateString,
+                balance: point.balance
+              };
             });
 
             // Dessin du graphique
+            // Dessin du graphique avec une fausse date au lieu du mot "Début"
+            // Dessin du graphique avec une fausse date au lieu du mot "Début"
             if (formattedData.length === 1) {
-                const dummyPoint = { ...formattedData[0], date: 'Début' };
-                setChartData([dummyPoint, formattedData[0]]);
+              const startDate = new Date();
+              if (timeframe === '1J') startDate.setDate(startDate.getDate() - 1);
+              else if (timeframe === '1S') startDate.setDate(startDate.getDate() - 7);
+              else if (timeframe === '1M') startDate.setMonth(startDate.getMonth() - 1);
+              else if (timeframe === '3M') startDate.setMonth(startDate.getMonth() - 3);
+              else if (timeframe === '1A') startDate.setFullYear(startDate.getFullYear() - 1);
+              else if (timeframe === 'Max') startDate.setFullYear(startDate.getFullYear() - 3); // 👈 AJOUT DE MAX ICI
+
+              const dummyPoint = {
+                ...formattedData[0],
+                date: timeframe === '1J' ? startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+              };
+              setChartData([dummyPoint, formattedData[0]]);
             } else {
-                setChartData(formattedData);
+              setChartData(formattedData);
             }
           } else {
             setChartData([]);
@@ -166,7 +179,7 @@ export default function ProfilePage() {
     <DashboardLayout title="Mon Profil">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+
           {/* CARTE 1 : Informations du Profil */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-lg relative overflow-hidden min-h-[320px]">
             <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-indigo-600/20 to-cyan-400/20"></div>
@@ -234,7 +247,7 @@ export default function ProfilePage() {
           {/* CARTE 2 : Graphique d'évolution des actifs */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg lg:col-span-2">
             <div className="flex justify-between items-center mb-6">
-              
+
               {/* Affichage du VRAI solde en USD */}
               <div>
                 <h3 className="text-slate-400 text-sm font-medium">Actif Total (USD)</h3>
@@ -242,43 +255,48 @@ export default function ProfilePage() {
                   {totalBalance !== null ? `$${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00'}
                 </p>
               </div>
-              
+
               {/* NOUVEAU : Sélecteur de temps basé sur les options réelles de Zerion */}
               <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex gap-1">
                 {['1J', '1S', '1M', '3M', '1A', 'Max'].map((tf) => (
                   <button
                     key={tf}
                     onClick={() => setTimeframe(tf)}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                      timeframe === tf ? 'bg-indigo-600 text-white shadow-[0_0_10px_rgba(79,70,229,0.4)]' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'
-                    }`}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${timeframe === tf ? 'bg-indigo-600 text-white shadow-[0_0_10px_rgba(79,70,229,0.4)]' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'
+                      }`}
                   >
                     {tf}
                   </button>
                 ))}
               </div>
             </div>
-            
+
             <div className="h-48 w-full">
               <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} dy={10} minTickGap={20} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} width={60} />
-                  
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} dy={10} minTickGap={20} />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#64748b', fontSize: 11 }}
+                    width={60}
+                    domain={['dataMin', 'dataMax']}
+                  />
+
                   {/* Tooltip formaté en USD */}
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', color: '#f8fafc', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)' }} 
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', color: '#f8fafc', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)' }}
                     itemStyle={{ color: '#818cf8', fontWeight: 'bold', fontSize: '16px' }}
                     labelStyle={{ color: '#94a3b8', fontSize: '12px', marginBottom: '4px' }}
                     formatter={(value: any) => [`$${value.toLocaleString('en-US')}`, 'Valeur']}
                   />
-                  
+
                   <Area type="monotone" dataKey="balance" stroke="#818cf8" strokeWidth={3} fillOpacity={1} fill="url(#colorBalance)" />
                 </AreaChart>
               </ResponsiveContainer>
