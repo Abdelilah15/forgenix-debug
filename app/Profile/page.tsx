@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
-import { useAccount } from 'wagmi'; 
+import { useAccount } from 'wagmi';
 import DashboardLayout from '../../components/DashboardLayout';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import AssetList from '../../components/AssetList';
 
 interface UserProfile {
   username: string;
@@ -27,6 +28,7 @@ export default function ProfilePage() {
   const [timeframe, setTimeframe] = useState('1M');
   const [chartData, setChartData] = useState<{ date: string, balance: number }[]>([]);
   const [totalBalance, setTotalBalance] = useState<number | null>(null);
+  const [assets, setAssets] = useState([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -65,15 +67,15 @@ export default function ProfilePage() {
           setTotalBalance(json.totalBalance);
 
           // Fonction utile pour formater les dates
-          const formatTime = (d: Date) => timeframe === '1J' 
-             ? d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) 
-             : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+          const formatTime = (d: Date) => timeframe === '1J'
+            ? d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+            : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 
           // CORRECTION 1 : Si on a de vraies données
           if (json.chartData && json.chartData.length > 0) {
             const formattedData = json.chartData.map((point: any) => ({
-                date: formatTime(new Date(point.timestamp)),
-                balance: point.balance
+              date: formatTime(new Date(point.timestamp)),
+              balance: point.balance
             }));
 
             // Si on a un seul point, on crée un point de départ factice pour pouvoir tracer une ligne
@@ -87,8 +89,10 @@ export default function ProfilePage() {
               else if (timeframe === 'Max') startDate.setFullYear(startDate.getFullYear() - 3);
 
               setChartData([{ date: formatTime(startDate), balance: formattedData[0].balance }, formattedData[0]]);
+
             } else {
               setChartData(formattedData);
+              setAssets(json.assets || []);
             }
           } else {
             // CORRECTION 2 : Si la base renvoie [] (Nouveau wallet ou solde 0)
@@ -102,8 +106,8 @@ export default function ProfilePage() {
             else if (timeframe === 'Max') startDate.setFullYear(startDate.getFullYear() - 3);
 
             setChartData([
-               { date: formatTime(startDate), balance: json.totalBalance || 0 },
-               { date: formatTime(new Date()), balance: json.totalBalance || 0 }
+              { date: formatTime(startDate), balance: json.totalBalance || 0 },
+              { date: formatTime(new Date()), balance: json.totalBalance || 0 }
             ]);
           }
         }
@@ -158,8 +162,8 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="relative z-10 w-full flex flex-col items-center animate-in fade-in duration-300">
-                 {/* Interface d'édition simplifiée pour la lisibilité du code ici */}
-                 <div onClick={handleShuffleAvatar} className="relative w-24 h-24 rounded-full border-4 border-indigo-500 bg-slate-800 shadow-xl overflow-hidden mb-4 cursor-pointer">
+                {/* Interface d'édition simplifiée pour la lisibilité du code ici */}
+                <div onClick={handleShuffleAvatar} className="relative w-24 h-24 rounded-full border-4 border-indigo-500 bg-slate-800 shadow-xl overflow-hidden mb-4 cursor-pointer">
                   <img src={editAvatar} alt="Profile Edit" className="w-full h-full object-cover" />
                 </div>
                 <div className="w-full mb-5">
@@ -199,7 +203,7 @@ export default function ProfilePage() {
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} dy={10} minTickGap={20} />
-                  
+
                   {/* CORRECTION 3 : L'Axe Y est maintenant dynamique pour éviter le "Crush" du graphique */}
                   <YAxis
                     axisLine={false}
@@ -231,8 +235,12 @@ export default function ProfilePage() {
           <button onClick={() => setActiveTab('details')} className={`flex-1 flex justify-center py-2.5 text-sm rounded-lg ${activeTab === 'details' ? 'bg-slate-800 text-white' : 'text-slate-400'}`}>Actifs en détail</button>
           <button onClick={() => setActiveTab('analysis')} className={`flex-1 flex justify-center py-2.5 text-sm rounded-lg ${activeTab === 'analysis' ? 'bg-slate-800 text-white' : 'text-slate-400'}`}>Analyse du portefeuille</button>
         </div>
-        <div className="min-h-[300px] border border-dashed border-slate-800 rounded-2xl flex items-center justify-center bg-slate-900/50">
-          <p className="text-slate-500 text-sm">Le contenu apparaîtra ici.</p>
+        <div className="min-h-[300px] border border-slate-800 rounded-2xl bg-slate-900 p-6">
+          {activeTab === 'details' ? (
+            <AssetList assets={assets} />
+          ) : (
+            <p className="text-slate-500 text-sm">Analyse DeFi à venir...</p>
+          )}
         </div>
       </div>
     </DashboardLayout>
