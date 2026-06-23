@@ -115,7 +115,8 @@ export default function AssetList({ assets }: { assets: any[] }) {
                     )}
                 </div>
             </div>
-
+            
+            {/* BLOC 1 : TOKENS (Séparé et préparé pour l'avenir) */}           
             {selectedAsset === 'Tokens' && (
                 <div className="space-y-2">
                     <div className="grid grid-cols-3 gap-3 p-3 bg-slate-800/50 rounded-lg border-slate-700">
@@ -217,6 +218,7 @@ export default function AssetList({ assets }: { assets: any[] }) {
                 </div>
             )}
 
+            {/* BLOC 3 : NFTs (Séparé et préparé pour l'avenir) */}
             {selectedAsset === 'NFTs' && <div></div>}
         </div>
     );

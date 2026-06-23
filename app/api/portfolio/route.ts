@@ -144,17 +144,15 @@ export async function POST(request: Request) {
                 ...(process.env.MOBULA_API_KEY && { 'Authorization': process.env.MOBULA_API_KEY })
             };
 
-            // ⚡ OPTIMISATION : Ajout de la DeFi et des filtres (anti-spam + précision totale)
             const [chainsRes, portfolioRes, defiRes] = await Promise.all([
                 fetch('https://api.mobula.io/api/1/blockchains', { headers: mobulaHeaders }).catch(() => null),
-                fetch(`https://api.mobula.io/api/1/wallet/portfolio?wallet=${safeAddress}&filterSpam=true&accuracy=maximum`, { headers: mobulaHeaders }).catch(() => null),
+                fetch(`https://api.mobula.io/api/1/wallet/portfolio?wallet=${safeAddress}`, { headers: mobulaHeaders }).catch(() => null),
                 fetch(`https://api.mobula.io/api/2/wallet/defi-positions?wallet=${safeAddress}`, { headers: mobulaHeaders }).catch(() => null)
             ]);
 
-            // CORRECTION 1 : Fonction pour nettoyer le format "evm:8453" en "8453"
-            const cleanChainId = (cid: any) => cid ? cid.toString().replace('evm:', '') : "unknown";
+            // 1. Nettoyage strict (en minuscules) pour ne pas rater les icônes de Base ou Plume
+            const cleanChainId = (cid: any) => cid ? cid.toString().replace('evm:', '').toLowerCase() : "unknown";
 
-            // 1. Dictionnaire des réseaux (Logos et Noms propres)
             if (chainsRes && chainsRes.ok) {
                 const chainsData = await chainsRes.json();
                 if (chainsData.data) {
@@ -168,30 +166,32 @@ export async function POST(request: Request) {
                 }
             }
 
-            // 2. Traitement du Portefeuille classique (Tokens)
             if (portfolioRes && portfolioRes.ok) {
                 const portfolioData = await portfolioRes.json();
-
+                
                 if (portfolioData.data && portfolioData.data.assets) {
                     portfolioData.data.assets.forEach((assetItem: any) => {
                         const tokenInfo = assetItem.asset;
-                        const balancesArray = assetItem.contracts_balances || [];
+                        
+                        // 2. Filtre Anti-Spam : On bloque Matma manuellement
+                        if (tokenInfo.name?.toLowerCase().includes("matma") || assetItem.is_spam) return;
 
+                        const balancesArray = assetItem.contracts_balances || [];
+                        
                         balancesArray.forEach((contract: any) => {
+                            // On affiche tout tant que le solde est supérieur à 0
+                            if (contract.balance <= 0) return;
+
                             const cid = cleanChainId(contract.chainId);
                             const networkData = chainsMeta[cid] || { name: cid, icon: null };
-
-                            // CORRECTION 2 : Filtre de sécurité maison pour les miettes invisibles (ex: < 0.01$)
-                            const value = contract.balance * (assetItem.price || 0);
-                            if (value < 0.01) return;
-
+                            
                             assets.push({
                                 id: `${tokenInfo.id || tokenInfo.symbol}-${cid}`,
                                 name: tokenInfo.name || "Unknown",
                                 symbol: tokenInfo.symbol || "???",
                                 balance: contract.balance,
                                 price: assetItem.price || 0,
-                                value: value,
+                                value: contract.balance * (assetItem.price || 0),
                                 icon: tokenInfo.logo || null,
                                 chainId: cid,
                                 chainName: networkData.name || cid,
@@ -204,28 +204,31 @@ export async function POST(request: Request) {
                 }
             }
 
-            // 3. CORRECTION 3 : Traitement de la DeFi (Staking Plume, Lending, LP, etc.)
             if (defiRes && defiRes.ok) {
                 const defiData = await defiRes.json();
                 const positions = defiData.data || (Array.isArray(defiData) ? defiData : []);
-
-                positions.forEach((position: any) => {
+                
+                // 3. CORRECTION VS CODE : Ajout de "index: number" pour résoudre la ligne rouge
+                positions.forEach((position: any, index: number) => {
                     const tokenInfo = position.asset || position.underlying_token || {};
                     const cid = cleanChainId(position.chainId || position.chain);
                     const networkData = chainsMeta[cid] || { name: cid, icon: null };
-
+                    
+                    const balance = position.balance || position.amount || 0;
+                    const price = position.price || tokenInfo.price || 0;
+                    
                     assets.push({
                         id: `defi-${position.id || tokenInfo.symbol || index}-${cid}`,
                         name: tokenInfo.name || position.protocol || "DeFi Position",
                         symbol: tokenInfo.symbol || "???",
-                        balance: position.balance || position.amount || 0,
-                        price: position.price || tokenInfo.price || 0,
-                        value: position.value || (position.balance * position.price) || 0,
+                        balance: balance,
+                        price: price,
+                        value: position.value || (balance * price) || 0,
                         icon: tokenInfo.logo || position.logo || null,
                         chainId: cid,
                         chainName: networkData.name || cid,
                         chainIcon: networkData.icon || null,
-                        positionType: position.type || "defi", // Va automatiquement dans l'onglet "DeFi" du Frontend
+                        positionType: position.type || "defi",
                         protocolName: position.protocol || "DeFi Protocol"
                     });
                 });
