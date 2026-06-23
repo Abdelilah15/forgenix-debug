@@ -140,6 +140,8 @@ export async function POST(request: Request) {
             const positionsRes = await fetch(`https://api.zerion.io/v1/wallets/${safeAddress}/positions?currency=usd&filter[positions]=no_filter`, { headers });
             if (positionsRes.ok) {
                 const positionsData = await positionsRes.json();
+                console.log("Données Zerion reçues :", JSON.stringify(positionsData.data[0], null, 2));
+                const walletPositions = positionsData.data.filter((pos: any) => pos.attributes.position_type === 'wallet');
                 assets = positionsData.data.map((pos: any) => ({
                     id: pos.id,
                     name: pos.attributes.fungible_info?.name || "Unknown",
@@ -147,7 +149,8 @@ export async function POST(request: Request) {
                     balance: pos.attributes.quantity.numeric,
                     price: pos.attributes.price,
                     value: pos.attributes.value,
-                    icon: pos.attributes.fungible_info?.icon?.url
+                    icon: pos.attributes.fungible_info?.icon?.url,
+                    chain: pos.relationships?.chain?.data?.id || "unknown"
                 }));
             }
         } catch (e) {
