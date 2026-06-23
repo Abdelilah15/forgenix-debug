@@ -4,16 +4,22 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 const NetworkAvatar = ({ name, iconUrl, className = "" }: { name: string, iconUrl?: string, className?: string }) => {
     const [hasError, setHasError] = useState(false);
 
+    // Si pas d'URL ou si l'image crash, on affiche une pastille propre et bien centrée
     if (hasError || !iconUrl) {
         return (
-            <div className={`flex items-center justify-center bg-slate-800 text-white font-bold text-[8px] ${className}`}>
-                {name?.charAt(0).toUpperCase()}
+            <div className={`flex items-center justify-center bg-slate-700 text-white font-bold text-[8px] uppercase overflow-hidden ${className}`}>
+                {name ? name.charAt(0) : '?'}
             </div>
         );
     }
 
     return (
-        <img src={iconUrl} alt={name} className={`object-cover bg-slate-900 ${className}`} onError={() => setHasError(true)} />
+        <img 
+            src={iconUrl} 
+            alt={name} 
+            className={`object-cover bg-slate-900 ${className}`} 
+            onError={() => setHasError(true)} 
+        />
     );
 };
 
