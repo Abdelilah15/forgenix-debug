@@ -137,21 +137,43 @@ export async function POST(request: Request) {
 
         let assets = [];
         try {
+            // 🌟 NOUVEAU : Récupération des métadonnées des réseaux côté serveur
+            let chainsMeta: Record<string, any> = {};
+            const chainsRes = await fetch('https://api.zerion.io/v1/chains', { headers });
+            if (chainsRes.ok) {
+                const chainsData = await chainsRes.json();
+                chainsData.data.forEach((chain: any) => {
+                    chainsMeta[chain.id] = {
+                        name: chain.attributes.name,
+                        icon: chain.attributes.icon?.url
+                    };
+                });
+            }
+
+            // Récupération des positions
             const positionsRes = await fetch(`https://api.zerion.io/v1/wallets/${safeAddress}/positions?currency=usd&filter[positions]=no_filter`, { headers });
             if (positionsRes.ok) {
                 const positionsData = await positionsRes.json();
-                console.log("Données Zerion reçues :", JSON.stringify(positionsData.data[0], null, 2));
-                const walletPositions = positionsData.data.filter((pos: any) => pos.attributes.position_type === 'wallet');
-                assets = positionsData.data.map((pos: any) => ({
-                    id: pos.id,
-                    name: pos.attributes.fungible_info?.name || "Unknown",
-                    symbol: pos.attributes.fungible_info?.symbol || "???",
-                    balance: pos.attributes.quantity.numeric,
-                    price: pos.attributes.price,
-                    value: pos.attributes.value,
-                    icon: pos.attributes.fungible_info?.icon?.url,
-                    chain: pos.relationships?.chain?.data?.id || "unknown"
-                }));
+
+                // 🌟 MODIFICATION : Injection du vrai nom et de l'icône du réseau
+                assets = positionsData.data.map((pos: any) => {
+                    const chainId = pos.relationships?.chain?.data?.id || "unknown";
+                    const networkData = chainsMeta[chainId] || {}; // On pioche dans le dictionnaire créé juste au-dessus
+
+                    return {
+                        id: pos.id,
+                        name: pos.attributes.fungible_info?.name || "Unknown",
+                        symbol: pos.attributes.fungible_info?.symbol || "???",
+                        balance: pos.attributes.quantity.numeric,
+                        price: pos.attributes.price,
+                        value: pos.attributes.value,
+                        icon: pos.attributes.fungible_info?.icon?.url,
+                        // On garde l'ID pour la logique, mais on ajoute les données visuelles prêtes à l'emploi :
+                        chainId: chainId,
+                        chainName: networkData.name ? networkData.name.charAt(0).toUpperCase() + networkData.name.slice(1) : chainId,
+                        chainIcon: networkData.icon || null
+                    };
+                });
             }
         } catch (e) {
             console.error("Erreur récupération actifs", e);
