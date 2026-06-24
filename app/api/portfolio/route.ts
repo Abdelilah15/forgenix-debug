@@ -135,10 +135,23 @@ export async function POST(request: Request) {
             }
         }
 
-        // === BLOC DE RÉCUPÉRATION REVISITÉ ET FORCÉ POUR TOUS LES RÉSEAUX ===
+        // === BLOC DE RÉCUPÉRATION ZERION AVEC LE CATALOGUE DES RÉSEAUX ===
         let assets: any[] = [];
         try {
-            // Endpoint de positions unifié de Zerion
+            // 1. NOUVEAUTÉ : On récupère le catalogue complet et officiel des réseaux Zerion
+            // (1 seul appel ultra rapide pour récupérer toutes les icônes)
+            const chainsRes = await fetch("https://api.zerion.io/v1/chains", { headers });
+            const chainIconsMap: Record<string, string | null> = {};
+            
+            if (chainsRes.ok) {
+                const chainsData = await chainsRes.json();
+                // On crée un dictionnaire : "binance-smart-chain" -> "https://..."
+                chainsData.data?.forEach((chain: any) => {
+                    chainIconsMap[chain.id] = chain.attributes?.icon?.url || null;
+                });
+            }
+
+            // 2. Récupération unifiée de tous les actifs (Tokens + DeFi)
             const positionsRes = await fetch(
                 `https://api.zerion.io/v1/wallets/${safeAddress}/positions?currency=usd&filter[positions]=no_filter&sort=value`,
                 { headers }
@@ -155,24 +168,17 @@ export async function POST(request: Request) {
                     const tokenInfo = attrs.fungible_info || {};
                     const balance = attrs.quantity?.numeric ? parseFloat(attrs.quantity.numeric) : 0;
 
-                    // 1. FORÇAGE STRICT : On garde tout tant qu'il y a un solde positif (> 0)
-                    // Cela permet d'inclure les centimes, les jetons de testnet ou non indexés en prix
+                    // On conserve même les centimes et petits soldes
                     if (balance <= 0) return;
 
-                    // 2. GESTION ET NETTOYAGE PROFESSIONNEL DU RÉSEAU (Chain ID & Name)
                     const chainId = pos.relationships?.chain?.data?.id || "unknown";
-                    
-                    // Nettoyage des tirets (ex: binance-smart-chain -> Binance Smart Chain)
                     const chainName = chainId
                         .split('-')
                         .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
                         .join(' ');
 
-                    // 3. CORRECTIF LOGO RÉSEAU PROPRE ET TESTÉ
-                    // Utilisation d'un pattern d'URL d'icône universel et toléré par votre composant Front
-                    const chainIcon = chainId !== "unknown" 
-                        ? `https://icons.llamao.fi/icons/chains/rsz_${chainId === 'ethereum' ? 'ethereum' : chainId === 'binance-smart-chain' ? 'bsc' : chainId}?width=40&height=40`
-                        : null;
+                    // 3. LA MAGIE ICI : On associe instantanément l'icône HD depuis notre dictionnaire
+                    const chainIcon = chainIconsMap[chainId] || null;
 
                     const price = attrs.price || 0;
                     const value = attrs.value || (balance * price);
@@ -185,10 +191,10 @@ export async function POST(request: Request) {
                         balance: balance,
                         price: price,
                         value: parseFloat(value.toFixed(2)),
-                        icon: tokenInfo.icon?.url || null,
+                        icon: tokenInfo.icon?.url || null, // Icône du Token fournie nativement
                         chainId: chainId,
                         chainName: chainName,
-                        chainIcon: chainIcon, 
+                        chainIcon: chainIcon,              // Icône du Réseau officielle Zerion !
                         positionType: isWallet ? "wallet" : "defi",
                         protocolName: !isWallet ? (pos.relationships?.protocol?.data?.id || "DeFi Position") : null
                     });
@@ -197,6 +203,7 @@ export async function POST(request: Request) {
         } catch (e) {
             console.error("Erreur récupération actifs avec Zerion Positions Forcé:", e);
         }
+        // === FIN DU BLOC ZERION ===
         
         // === À AJOUTER JUSTE APRÈS LE BLOC ZERION : FALLBACK MOBULA HYBRIDE ===
         try {
