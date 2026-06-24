@@ -57,7 +57,7 @@ export default function AssetList({ assets }: { assets: any[] }) {
             const matchesTab = selectedAsset === 'Tokens' 
                 ? asset.positionType === 'wallet' 
                 : selectedAsset === 'DeFi' 
-                    ? asset.positionType !== 'wallet' 
+                    ? asset.positionType === 'defi' 
                     : false;
 
             return matchesSearch && matchesNetwork && matchesTab;
@@ -71,7 +71,7 @@ export default function AssetList({ assets }: { assets: any[] }) {
             <div className="flex flex-col sm:flex-row gap-3">
                 <div>
                     <button onClick={() => setSelectedAsset('Tokens')} className={`border border-slate-700 rounded-l-lg px-3 py-2 text-sm focus:outline-none transition-colors ${selectedAsset === 'Tokens' ? "bg-slate-800 text-white" : "bg-slate-900 text-slate-400 hover:bg-slate-800/50"}`}>Tokens</button>
-                    <button onClick={() => setSelectedAsset('DeFi')} className={`border border-slate-700 px-3 py-2 text-sm focus:outline-none transition-colors ${selectedAsset === 'DeFi' ? "bg-slate-800 text-white" : "bg-slate-900 text-slate-400 hover:bg-slate-800/50"}`}>DeFi</button>
+                    <button onClick={() => setSelectedAsset('DeFi')} className={`border-t border-b border-slate-700 px-3 py-2 text-sm focus:outline-none transition-colors ${selectedAsset === 'DeFi' ? "bg-slate-800 text-white" : "bg-slate-900 text-slate-400 hover:bg-slate-800/50"}`}>DeFi</button>
                     <button onClick={() => setSelectedAsset('NFTs')} className={`border border-slate-700 rounded-r-lg px-3 py-2 text-sm focus:outline-none transition-colors ${selectedAsset === 'NFTs' ? "bg-slate-800 text-white" : "bg-slate-900 text-slate-400 hover:bg-slate-800/50"}`}>NFTs</button>
                 </div>
 
@@ -115,7 +115,7 @@ export default function AssetList({ assets }: { assets: any[] }) {
                     )}
                 </div>
             </div>
-            
+
             {/* BLOC 1 : TOKENS (Séparé et préparé pour l'avenir) */}           
             {selectedAsset === 'Tokens' && (
                 <div className="space-y-2">
@@ -129,21 +129,15 @@ export default function AssetList({ assets }: { assets: any[] }) {
                         {filteredAssets.length > 0 ? (
                             filteredAssets.map((asset, index) => (
                                 <div key={`${asset.id}-${index}`} className="grid grid-cols-3 items-center p-3 bg-slate-800/30 rounded-lg border border-transparent hover:bg-slate-800/80 hover:border-slate-700 transition-all">
-
-                                    <div className="flex items-center gap-3 overflow-hidden">
+                                    {/* Colonne 1 : Pas d'overflow-hidden pour laisser respirer le badge entier */}
+                                    <div className="flex items-center gap-3">
                                         <div className="relative shrink-0">
-                                            {/* ❌ Plus de pastille textuelle. Si l'icône manque, on affiche l'icône globe */}
                                             {asset.icon ? (
                                                 <img src={asset.icon} className="w-8 h-8 rounded-full bg-slate-900 object-cover" alt={asset.symbol} />
                                             ) : (
                                                 <img src="/globe.svg" className="w-8 h-8 rounded-full bg-slate-800 p-1 object-cover" alt="Unknown" />
                                             )}
-                                            
-                                            <NetworkAvatar 
-                                                name={asset.chainName} 
-                                                iconUrl={asset.chainIcon} 
-                                                className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-800 z-10 shadow-sm" 
-                                            />
+                                            <NetworkAvatar name={asset.chainName} iconUrl={asset.chainIcon} className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-800 z-10 shadow-sm" />
                                         </div>
 
                                         <div className="min-w-0">
@@ -152,13 +146,21 @@ export default function AssetList({ assets }: { assets: any[] }) {
                                         </div>
                                     </div>
 
+                                    {/* Colonne 2 : Cours (Strictement 2 décimales) */}
                                     <div className="text-center">
-                                        <p className="text-slate-300 text-sm font-medium">${asset.price?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                        <p className="text-slate-300 text-sm font-medium">
+                                            ${asset.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                                        </p>
                                     </div>
 
+                                    {/* Colonne 3 : Valeur & Balance (Strictement 2 décimales) */}
                                     <div className="text-right">
-                                        <p className="text-white font-bold text-sm">${asset.value?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                                        <p className="text-slate-400 text-xs">{Number(asset.balance).toFixed(4)} {asset.symbol}</p>
+                                        <p className="text-white font-bold text-sm">
+                                            ${asset.value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                                        </p>
+                                        <p className="text-slate-400 text-xs">
+                                            {Number(asset.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {asset.symbol}
+                                        </p>
                                     </div>
                                 </div>
                             ))
@@ -182,12 +184,13 @@ export default function AssetList({ assets }: { assets: any[] }) {
                         {filteredAssets.length > 0 ? (
                             filteredAssets.map((asset, index) => (
                                 <div key={`${asset.id}-${index}`} className="grid grid-cols-3 items-center p-3 bg-slate-800/30 rounded-lg border border-transparent hover:bg-slate-800/80 hover:border-slate-700 transition-all">
-                                    <div className="flex items-center gap-3 overflow-hidden">
+                                    {/* Colonne 1 : Pas d'overflow-hidden pour laisser respirer le badge entier */}
+                                    <div className="flex items-center gap-3">
                                         <div className="relative shrink-0">
                                             {asset.icon ? (
                                                 <img src={asset.icon} className="w-8 h-8 rounded-full bg-slate-900 object-cover" alt={asset.symbol} />
                                             ) : (
-                                                <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-[10px] text-white font-bold uppercase">{asset.symbol?.substring(0, 1)}</div>
+                                                <img src="/globe.svg" className="w-8 h-8 rounded-full bg-slate-800 p-1 object-cover" alt="Unknown" />
                                             )}
                                             <NetworkAvatar name={asset.chainName} iconUrl={asset.chainIcon} className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-800 z-10 shadow-sm" />
                                         </div>
@@ -195,19 +198,28 @@ export default function AssetList({ assets }: { assets: any[] }) {
                                             <p className="text-white font-medium text-sm truncate">{asset.name}</p>
                                             <div className="flex items-center gap-2 mt-0.5">
                                                 <p className="text-slate-400 text-[10px] uppercase font-bold truncate">{asset.chainName}</p>
-                                                {/* Badge d'information DeFi */}
                                                 <span className="bg-blue-900/40 text-blue-300 text-[8px] uppercase font-bold px-1.5 py-0.5 rounded border border-blue-800/50 whitespace-nowrap">
                                                     {asset.protocolName || asset.positionType.replace('_', ' ')}
                                                 </span>
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Colonne 2 : Cours (Strictement 2 décimales) */}
                                     <div className="text-center">
-                                        <p className="text-slate-300 text-sm font-medium">${asset.price?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</p>
+                                        <p className="text-slate-300 text-sm font-medium">
+                                            ${asset.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                                        </p>
                                     </div>
+
+                                    {/* Colonne 3 : Valeur & Balance (Strictement 2 décimales) */}
                                     <div className="text-right">
-                                        <p className="text-white font-bold text-sm">${asset.value?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</p>
-                                        <p className="text-slate-400 text-xs">{Number(asset.balance).toFixed(4)} {asset.symbol}</p>
+                                        <p className="text-white font-bold text-sm">
+                                            ${asset.value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                                        </p>
+                                        <p className="text-slate-400 text-xs">
+                                            {Number(asset.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {asset.symbol}
+                                        </p>
                                     </div>
                                 </div>
                             ))

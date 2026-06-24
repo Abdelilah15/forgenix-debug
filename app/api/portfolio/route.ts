@@ -135,107 +135,69 @@ export async function POST(request: Request) {
             }
         }
 
+        // === REMPLACEMENT COMPLET DU BLOC MOBULA PAR ZERION POSITIONS ===
         let assets: any[] = [];
         try {
-            let chainsMeta: Record<string, any> = {};
+            // Utilisation de l'endpoint de positions unifié de Zerion (Tokens + DeFi)
+            const positionsRes = await fetch(
+                `https://api.zerion.io/v1/wallets/${safeAddress}/positions?currency=usd&filter[positions]=no_filter&sort=value`,
+                { headers }
+            );
 
-            const mobulaHeaders = {
-                'accept': 'application/json',
-                ...(process.env.MOBULA_API_KEY && { 'Authorization': process.env.MOBULA_API_KEY })
-            };
+            if (positionsRes.ok) {
+                const positionsData = await positionsRes.json();
+                const rawPositions = positionsData.data || [];
 
-            const [chainsRes, portfolioRes, defiRes] = await Promise.all([
-                fetch('https://api.mobula.io/api/1/blockchains', { headers: mobulaHeaders }).catch(() => null),
-                fetch(`https://api.mobula.io/api/1/wallet/portfolio?wallet=${safeAddress}`, { headers: mobulaHeaders }).catch(() => null),
-                fetch(`https://api.mobula.io/api/2/wallet/defi-positions?wallet=${safeAddress}`, { headers: mobulaHeaders }).catch(() => null)
-            ]);
+                rawPositions.forEach((pos: any) => {
+                    const attrs = pos.attributes;
+                    if (!attrs) return;
 
-            // 1. Nettoyage strict (en minuscules) pour ne pas rater les icônes de Base ou Plume
-            const cleanChainId = (cid: any) => cid ? cid.toString().replace('evm:', '').toLowerCase() : "unknown";
+                    // 1. FILTRE ANTI-SPAM ET SÉCURITÉ NATIVE ZERION
+                    // On élimine le spam connu ou les jetons non vérifiés qui n'ont aucune valeur
+                    const isVerified = attrs.flags?.is_verified ?? false;
+                    const hasValue = (attrs.value || 0) > 0.01;
+                    if (!isVerified && !hasValue) return; 
 
-            if (chainsRes && chainsRes.ok) {
-                const chainsData = await chainsRes.json();
-                if (chainsData.data) {
-                    chainsData.data.forEach((chain: any) => {
-                        const cid = cleanChainId(chain.chainId || chain.name);
-                        chainsMeta[cid] = {
-                            name: chain.name,
-                            icon: chain.logo || chain.icon || null
-                        };
-                    });
-                }
-            }
-
-            if (portfolioRes && portfolioRes.ok) {
-                const portfolioData = await portfolioRes.json();
-                
-                if (portfolioData.data && portfolioData.data.assets) {
-                    portfolioData.data.assets.forEach((assetItem: any) => {
-                        const tokenInfo = assetItem.asset;
-                        
-                        // 2. Filtre Anti-Spam : On bloque Matma manuellement
-                        if (tokenInfo.name?.toLowerCase().includes("matma") || assetItem.is_spam) return;
-
-                        const balancesArray = assetItem.contracts_balances || [];
-                        
-                        balancesArray.forEach((contract: any) => {
-                            // On affiche tout tant que le solde est supérieur à 0
-                            if (contract.balance <= 0) return;
-
-                            const cid = cleanChainId(contract.chainId);
-                            const networkData = chainsMeta[cid] || { name: cid, icon: null };
-                            
-                            assets.push({
-                                id: `${tokenInfo.id || tokenInfo.symbol}-${cid}`,
-                                name: tokenInfo.name || "Unknown",
-                                symbol: tokenInfo.symbol || "???",
-                                balance: contract.balance,
-                                price: assetItem.price || 0,
-                                value: contract.balance * (assetItem.price || 0),
-                                icon: tokenInfo.logo || null,
-                                chainId: cid,
-                                chainName: networkData.name || cid,
-                                chainIcon: networkData.icon || null,
-                                positionType: "wallet",
-                                protocolName: null
-                            });
-                        });
-                    });
-                }
-            }
-
-            if (defiRes && defiRes.ok) {
-                const defiData = await defiRes.json();
-                const positions = defiData.data || (Array.isArray(defiData) ? defiData : []);
-                
-                // 3. CORRECTION VS CODE : Ajout de "index: number" pour résoudre la ligne rouge
-                positions.forEach((position: any, index: number) => {
-                    const tokenInfo = position.asset || position.underlying_token || {};
-                    const cid = cleanChainId(position.chainId || position.chain);
-                    const networkData = chainsMeta[cid] || { name: cid, icon: null };
+                    // Extraction des informations fondamentales du Token
+                    const tokenInfo = attrs.fungible_info || {};
+                    const implementation = tokenInfo.implementations?.[0] || {};
                     
-                    const balance = position.balance || position.amount || 0;
-                    const price = position.price || tokenInfo.price || 0;
-                    
+                    // Gestion propre du réseau (chainId / chainName)
+                    const chainId = pos.relationships?.chain?.data?.id || "unknown";
+                    // Capitalisation propre du nom du réseau (ex: base -> Base, plume -> Plume)
+                    const chainName = chainId.charAt(0).toUpperCase() + chainId.slice(1); 
+
+                    const balance = attrs.quantity?.numeric ? parseFloat(attrs.quantity.numeric) : 0;
+                    const price = attrs.price || 0;
+                    const value = attrs.value || (balance * price);
+
+                    if (balance <= 0) return;
+
+                    // 2. SÉPARATION STRICTE WALLET VS DEFI VIA LE TYPE DE POSITION ZERION
+                    // Zerion qualifie de "wallet" les jetons standards. Tout le reste est de la DeFi.
+                    const isWallet = attrs.position_type === 'wallet';
+
                     assets.push({
-                        id: `defi-${position.id || tokenInfo.symbol || index}-${cid}`,
-                        name: tokenInfo.name || position.protocol || "DeFi Position",
+                        id: pos.id || `${tokenInfo.symbol}-${chainId}`,
+                        name: tokenInfo.name || "Unknown Token",
                         symbol: tokenInfo.symbol || "???",
                         balance: balance,
                         price: price,
-                        value: position.value || (balance * price) || 0,
-                        icon: tokenInfo.logo || position.logo || null,
-                        chainId: cid,
-                        chainName: networkData.name || cid,
-                        chainIcon: networkData.icon || null,
-                        positionType: position.type || "defi",
-                        protocolName: position.protocol || "DeFi Protocol"
+                        value: parseFloat(value.toFixed(2)),
+                        icon: tokenInfo.icon?.url || null,
+                        chainId: chainId,
+                        chainName: chainName,
+                        // Zerion fournit de magnifiques icônes de réseaux prêtes à l'emploi
+                        chainIcon: pos.relationships?.chain?.links?.icon || null, 
+                        positionType: isWallet ? "wallet" : "defi",
+                        protocolName: !isWallet ? (pos.relationships?.protocol?.data?.id || "DeFi Position") : null
                     });
                 });
             }
         } catch (e) {
-            console.error("Erreur récupération actifs avec Mobula:", e);
+            console.error("Erreur récupération actifs avec Zerion Positions:", e);
         }
+        
 
         return NextResponse.json({ chartData: dbSnapshots, totalBalance: finalTotalBalance, assets }, { status: 200 });
 
