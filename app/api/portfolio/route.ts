@@ -203,130 +203,172 @@ export async function POST(request: Request) {
         } catch (e) {
             console.error("Erreur récupération actifs avec Zerion Positions Forcé:", e);
         }
-        // === FIN DU BLOC ZERION ===
 
-        // === FALLBACK HYBRIDE : MOBULA (Soldes) + COINGECKO (Icônes) ===
-        // === FALLBACK MOBULA (AVEC DIAGNOSTIC ET ANTI-CACHE) ===
+
+        
+       // === L'USINE EXPLORATEUR GLOBALE (BLOCKSCOUT + COINGECKO) ===
         try {
-            console.log(`⏳ Appel Mobula en cours pour: ${safeAddress}`);
-            
-            const mobulaRes = await fetch(`https://api.mobula.io/api/1/wallet/portfolio?wallet=${safeAddress}`, {
-                cache: 'no-store', // 🔴 OBLIGATOIRE : Force Next.js à faire un vrai appel réseau
-                headers: {
-                    'Authorization': process.env.MOBULA_API_KEY || '',
+            console.log(`\n⚙️ Lancement de l'Usine Explorateur Universelle...`);
+
+            // CATALOGUE GLOBAL : Ajoutez ici n'importe quel réseau Blockscout V2
+            const explorerNetworks = [
+                {
+                    chainId: "morph",
+                    chainName: "Morph",
+                    baseUrl: `https://explorer.morphl2.io/api/v2/addresses/${safeAddress}`,
+                    cgNetworkId: "morph",
+                    nativeSymbol: "ETH",
+                    nativeCgId: "ethereum" 
+                },
+                {
+                    chainId: "lisk",
+                    chainName: "Lisk",
+                    baseUrl: `https://blockscout.lisk.com/api/v2/addresses/${safeAddress}`,
+                    cgNetworkId: "lisk",
+                    nativeSymbol: "ETH",
+                    nativeCgId: "ethereum"
+                },
+                {
+                    chainId: "plume",
+                    chainName: "Plume",
+                    baseUrl: `https://phoenix-explorer.plumenetwork.xyz/api/v2/addresses/${safeAddress}`,
+                    cgNetworkId: "plume-network", 
+                    nativeSymbol: "PLUME",
+                    nativeCgId: "plume-network" // Correction : Identifiant officiel pour obtenir le 0.0096$
                 }
-            });
+            ];
 
-            console.log(`📡 Code de statut Mobula : ${mobulaRes.status}`);
+            for (const network of explorerNetworks) {
+                try {
+                    let itemsFound = 0;
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 4000); 
 
-            if (!mobulaRes.ok) {
-                // Si Mobula refuse de répondre, on lit son message d'erreur d'origine
-                const errorText = await mobulaRes.text();
-                console.error(`❌ Mobula a bloqué la requête. Détails :`, errorText);
-            } else {
-                const mobulaData = await mobulaRes.json();
-                
-                
-                // === NOUVEAU CODE DE DÉBOGAGE SANS FILTRE ===
-                console.log("\n====== 🔍 CE QUE MOBULA VOIT VRAIMENT ======");
-                const mobulaAssets = mobulaData.data?.assets || [];
-                
-                if (mobulaAssets.length === 0) {
-                    console.log("⚠️ Mobula affirme que votre portefeuille est 100% VIDE sur TOUS les réseaux.");
-                } else {
-                    mobulaAssets.forEach((item: any) => {
-                        const symbol = item.asset?.symbol || "Unknown";
-                        const crossChains = item.cross_chain_balances || {};
-                        const chainsFound = Object.keys(crossChains).join(" | ");
-                        
-                        console.log(`🪙 Jeton: ${symbol} -> Présent sur : [ ${chainsFound || 'Réseau inconnu'} ]`);
+                    // --- ETAPE A : MONNAIE NATIVE (GAS) ---
+                    const nativeRes = await fetch(network.baseUrl, { 
+                        headers: { 'accept': 'application/json' }, cache: 'no-store', signal: controller.signal
                     });
-                }
-                console.log("==============================================\n");
+                    
+                    if (nativeRes.ok) {
+                        const nativeData = await nativeRes.json();
+                        const coinBalance = parseFloat(nativeData.coin_balance || "0") / 1e18; 
 
-                const allowedFallbackChains = ["plume", "morph", "lisk", "taiko", "ronin", "mitosis", "flare"];
+                        if (coinBalance > 0) {
+                            itemsFound++;
+                            
+                            // 1. Cherche le prix sur l'explorateur
+                            let price = nativeData.exchange_rate ? parseFloat(nativeData.exchange_rate) : 0;
 
-                // Dictionnaire de traduction : Nom Mobula -> ID Réseau CoinGecko
-                const cgNetworkMapping: Record<string, string> = {
-                    "bsc": "binance-smart-chain",
-                    "polygon": "polygon-pos",
-                    "ronin": "ronin",
-                    "taiko": "taiko",
-                    "lisk": "lisk"
-                    // Ajoutez les autres mappings selon la doc CoinGecko
-                };
-
-                // On utilise une boucle for...of pour gérer l'asynchrone (await) proprement avec CoinGecko
-                for (const item of mobulaAssets) {
-                    const tokenInfo = item.asset || {};
-                    const crossChains = item.cross_chain_balances || {};
-                    const price = item.price || 0;
-
-                    for (const [chainName, chainData] of Object.entries(crossChains)) {
-                        const normalizedChainName = chainName.toLowerCase();
-                        const balance = (chainData as any).balance || 0;
-                        const contractAddress = (chainData as any).address || tokenInfo.contracts?.[0]; // Récupération du contrat
-
-                        if (allowedFallbackChains.some(c => normalizedChainName.includes(c)) && balance > 0) {
-
-                            const formattedChainId = normalizedChainName.replace(/\s+/g, '-');
-                            const displayChainName = chainName.charAt(0).toUpperCase() + chainName.slice(1);
-
-                            // 1. Définition de l'icône par défaut (fournie par Mobula)
-                            let finalIcon = tokenInfo.logo || null;
-
-                            // 2. TENTATIVE COINGECKO : Si on a un contrat et que le réseau est supporté par CG
-                            const cgNetworkId = cgNetworkMapping[normalizedChainName] || normalizedChainName;
-
-                            if (contractAddress) {
+                            // 2. Fallback CoinGecko Global (Règle le problème du 0$)
+                            if (price === 0 && network.nativeCgId) {
                                 try {
-                                    // Appel à l'endpoint Onchain de CoinGecko
-                                    const cgRes = await fetch(
-                                        `https://api.coingecko.com/api/v3/onchain/networks/${cgNetworkId}/tokens/${contractAddress}/info`,
-                                        { headers: { 'x-cg-demo-api-key': process.env.COINGECKO_API_KEY || '' } }
-                                    );
-
+                                    const cgRes = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${network.nativeCgId}&vs_currencies=usd`);
                                     if (cgRes.ok) {
                                         const cgData = await cgRes.json();
-                                        // On écrase l'icône Mobula par la belle icône CoinGecko (image.large ou image.thumb)
-                                        if (cgData.data?.attributes?.image?.large) {
-                                            finalIcon = cgData.data.attributes.image.large;
-                                        }
+                                        if (cgData[network.nativeCgId]?.usd) price = cgData[network.nativeCgId].usd;
                                     }
-                                } catch (cgError) {
-                                    console.error(`CoinGecko rate limit ou réseau non supporté pour ${normalizedChainName}`);
-                                }
+                                } catch (e) {}
                             }
 
-                            const value = balance * price;
-                            const isDeFi = (tokenInfo.name || "").toLowerCase().includes("staked");
-
+                            const value = coinBalance * price;
+                            
                             assets.push({
-                                id: `hybrid-${tokenInfo.id || tokenInfo.symbol}-${formattedChainId}`,
-                                name: tokenInfo.name || "Unknown Token",
-                                symbol: tokenInfo.symbol || "???",
-                                balance: balance,
+                                id: `explorer-native-${network.chainId}`,
+                                name: network.nativeSymbol,
+                                symbol: network.nativeSymbol,
+                                balance: coinBalance,
                                 price: price,
-                                value: parseFloat(value.toFixed(2)),
-                                icon: finalIcon, // <-- L'icône viendra de CoinGecko si l'appel a réussi !
-                                chainId: formattedChainId,
-                                chainName: displayChainName,
-                                chainIcon: null,
-                                positionType: isDeFi ? "defi" : "wallet",
-                                protocolName: isDeFi ? "Staking / Yield" : null
+                                value: value > 0 ? parseFloat(value.toFixed(4)) : 0.0001, 
+                                icon: `https://icons.llamao.fi/icons/chains/rsz_${network.chainId}?width=40&height=40`,
+                                chainId: network.chainId,
+                                chainName: network.chainName,
+                                chainIcon: `https://icons.llamao.fi/icons/chains/rsz_${network.chainId}?width=40&height=40`, 
+                                positionType: "wallet",
+                                protocolName: null
                             });
                         }
                     }
+
+                    // --- ETAPE B : CONTRATS (ERC-20, NFTs, JETONS DE REÇUS DEFI) ---
+                    const tokenRes = await fetch(`${network.baseUrl}/token-balances`, { 
+                        headers: { 'accept': 'application/json' }, cache: 'no-store', signal: controller.signal
+                    });
+                    clearTimeout(timeoutId); 
+
+                    if (tokenRes.ok) {
+                        const data = await tokenRes.json();
+                        const tokens = data.items || [];
+
+                        for (const item of tokens) {
+                            const tokenInfo = item.token || {};
+                            
+                            // CORRECTION MATHÉMATIQUE GLOBALE : S'il n'y a pas de décimales (ex: NFT), on divise par 1.
+                            const decimals = tokenInfo.decimals ? parseInt(tokenInfo.decimals, 10) : 0;
+                            const balance = parseFloat(item.value || "0") / Math.pow(10, decimals);
+
+                            if (balance <= 0) continue;
+                            itemsFound++;
+
+                            const contractAddress = tokenInfo.address || "";
+                            const symbol = tokenInfo.symbol || "Unknown";
+                            const name = tokenInfo.name || "Unknown Token";
+                            let finalIcon = tokenInfo.icon_url || null;
+                            
+                            // 1. Cherche le prix de l'ERC-20 directement sur l'explorateur (Meilleure source)
+                            let price = tokenInfo.exchange_rate ? parseFloat(tokenInfo.exchange_rate) : 0;
+
+                            // 2. Fallback CoinGecko si l'explorateur ne connaît pas le prix
+                            if (price === 0 && contractAddress && network.cgNetworkId) {
+                                try {
+                                    const cgRes = await fetch(
+                                        `https://api.coingecko.com/api/v3/onchain/networks/${network.cgNetworkId}/tokens/${contractAddress}/info`,
+                                        { headers: { 'x-cg-demo-api-key': process.env.COINGECKO_API_KEY || '' } }
+                                    );
+                                    if (cgRes.ok) {
+                                        const cgData = await cgRes.json();
+                                        const cgAttrs = cgData.data?.attributes || {};
+                                        if (cgAttrs.image?.large) finalIcon = cgAttrs.image.large;
+                                        if (cgAttrs.price_usd) price = parseFloat(cgAttrs.price_usd);
+                                    }
+                                } catch (e) {}
+                            }
+
+                            const value = balance * price;
+                            
+                            // DÉTECTION GLOBALE DEFI : Si c'est un jeton de reçu (Staked, Receipt, aToken, etc.)
+                            const nameLower = name.toLowerCase();
+                            const isDeFi = nameLower.includes("staked") || nameLower.includes("receipt") || symbol.toLowerCase().startsWith("st");
+
+                            assets.push({
+                                id: `explorer-${contractAddress}-${network.chainId}`,
+                                name: name,
+                                symbol: symbol,
+                                balance: balance,
+                                price: price,
+                                value: value > 0 ? parseFloat(value.toFixed(4)) : 0.0001,
+                                icon: finalIcon,
+                                chainId: network.chainId,
+                                chainName: network.chainName,
+                                chainIcon: `https://icons.llamao.fi/icons/chains/rsz_${network.chainId}?width=40&height=40`, 
+                                positionType: isDeFi ? "defi" : "wallet",
+                                protocolName: isDeFi ? "DeFi Protocol" : null
+                            });
+                        }
+                    }
+                    if (itemsFound > 0) {
+                        console.log(`✅ ${network.chainName} : ${itemsFound} actifs (dont jetons) intégrés.`);
+                    }
+                } catch (netError: any) {
+                    console.error(`❌ Timeout sur l'explorateur ${network.chainName}.`);
                 }
             }
         } catch (e) {
-            console.error("Erreur récupération Hybride Mobula/CoinGecko:", e);
+            console.error("Erreur critique Usine Explorateur :", e);
         }
-        // =======================================================================
+        // === FIN DE L'USINE EXPLORATEUR GLOBALE ===
 
 
         return NextResponse.json({ chartData: dbSnapshots, totalBalance: finalTotalBalance, assets }, { status: 200 });
-
     } catch (error) {
         console.error("❌ CRASH API PORTFOLIO :", error);
         return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
