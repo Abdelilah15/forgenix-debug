@@ -12,7 +12,7 @@ import type { Asset, FactoryError } from "@/lib/wallet/types";
 async function getZerionAssetsNormalized(address: string): Promise<Asset[]> {
     const apiKey = process.env.ZERION_API_KEY;
     if (!apiKey) return [];
-    
+
     const encodedKey = Buffer.from(`${apiKey}:`).toString('base64');
     const headers = { 'accept': 'application/json', 'authorization': `Basic ${encodedKey}` };
     const safeAddress = address.toLowerCase();
@@ -65,18 +65,26 @@ async function getZerionAssetsNormalized(address: string): Promise<Asset[]> {
 
                 assets.push({
                     id: pos.id || `${tokenInfo.symbol}-${chainId}`,
-                    name: tokenInfo.name || "Unknown Token",
-                    symbol: tokenInfo.symbol || "???",
-                    balance: balance,
-                    priceUsd: price, // Normalisé pour mergeAssets
-                    valueUsd: parseFloat(value.toFixed(2)), // Normalisé pour mergeAssets
-                    icon: tokenInfo.icon?.url || null,
-                    chainId: chainId,
+                    wallet: safeAddress, // ✅ FIX 1 : Indispensable pour a.wallet.toLowerCase()
+                    chain: chainId as any, // ✅ On cast car Zerion renvoie "ethereum" etc, qui déborde du type ("plume"|"lisk"|"morph")
+                    chainId: 0, // Fallback numérique car Zerion utilise des strings pour l'ID
                     chainName: chainName,
                     chainIcon: chainIcon,
                     positionType: isWallet ? "wallet" : "defi",
-                    protocolName: !isWallet ? (pos.relationships?.protocol?.data?.id || "DeFi Position") : null
-                });
+                    assetType: isWallet ? "erc20" : "vault", // ✅ FIX 2 : Requis pour la clé de déduplication
+                    protocol: !isWallet ? (pos.relationships?.protocol?.data?.id || "DeFi Position") : null,
+                    contractAddress: tokenInfo.implementations?.[0]?.address || null, // ✅ FIX 3 : Requis pour éviter un autre crash
+                    symbol: tokenInfo.symbol || "???",
+                    name: tokenInfo.name || "Unknown Token",
+                    decimals: tokenInfo.decimals || 18,
+                    rawBalance: attrs.quantity?.int || "0",
+                    formattedBalance: attrs.quantity?.numeric || "0",
+                    quantity: balance,
+                    priceUsd: price,
+                    valueUsd: parseFloat(value.toFixed(2)),
+                    source: "zerion", // ✅ FIX 4 : Essentiel pour la priorité dans merge.ts
+                    updatedAt: new Date().toISOString()
+                } as Asset);
             });
         }
     } catch (e) {
@@ -216,7 +224,7 @@ export async function POST(req: NextRequest) {
         // ====================================================================
         // 2) LANCEMENT DES USINES DE RÉCUPÉRATION (ZERION + LOCAL)
         // ====================================================================
-        
+
         // Lancement Zerion en parallèle
         const zerionPromise = getZerionAssetsNormalized(address);
 
@@ -250,19 +258,25 @@ export async function POST(req: NextRequest) {
 
         let zerionAssets: Asset[] = [];
         try {
-            zerionAssets = await zerionPromise;
+            // On ajoute un timeout manuel de sécurité de 8 secondes maximum pour Zerion
+            // Si Zerion bloque, on l'ignore et on charge le reste du dashboard
+            const timeoutPromise = new Promise<Asset[]>((_, reject) =>
+                setTimeout(() => reject(new Error("Zerion API Timeout ou bloqué")), 8000)
+            );
+            zerionAssets = await Promise.race([zerionPromise, timeoutPromise]);
         } catch (e: any) {
-            partial = true;
+            console.warn("⚠️ Zerion ignoré (Réseau ou Timeout) :", e.message);
+            partial = true; // Le dashboard s'affichera quand même avec le flag "données partielles"
             errors.push({
                 scope: "merge",
-                reason: e?.message || "zerion fetch failed",
+                reason: e?.message || "Zerion bloqué par le réseau",
             });
         }
 
         // ====================================================================
         // 3) FUSION ET RÉPONSE FINALE
         // ====================================================================
-        
+
         const merged = mergeAssets({
             zerionAssets,
             localNative,
