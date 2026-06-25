@@ -1,21 +1,56 @@
 export type ChainKey = "plume" | "lisk" | "morph";
 
-export type AssetType = "native" | "erc20" | "lp" | "lending" | "staking" | "vault";
+/**
+ * positionType = ce que ton UI attend déjà (AssetList.tsx)
+ * - wallet => onglet Tokens
+ * - defi   => onglet DeFi
+ * - nft    => onglet NFTs
+ */
+export type PositionType = "wallet" | "defi" | "nft";
+
+/**
+ * assetType = granularité métier interne
+ */
+export type AssetType =
+  | "native"
+  | "erc20"
+  | "lp"
+  | "lending_supply"
+  | "lending_borrow"
+  | "staking"
+  | "vault"
+  | "reward"
+  | "nft";
 
 export type Asset = {
+  // identité
+  id?: string;
+  wallet: string;
   chain: ChainKey;
   chainId: number;
-  wallet: string;
+  chainName?: string;
+  chainIcon?: string | null;
+
+  // classification
+  positionType: PositionType;
   assetType: AssetType;
-  protocol?: string;
+  protocol?: string | null;
+
+  // token/NFT
   contractAddress: string | null;
+  tokenId?: string | null; // pour nft
   symbol: string;
   name: string;
   decimals: number;
-  rawBalance: string;        // bigint serialized
-  formattedBalance: string;  // human-readable
+
+  // montants
+  rawBalance: string;        // bigint sérialisé
+  formattedBalance: string;  // quantité human-readable
+  quantity?: number;         // pratique pour UI existante
   priceUsd?: number | null;
   valueUsd?: number | null;
+
+  // provenance
   source: "zerion" | "local-rpc";
   updatedAt: string;
 };
@@ -36,14 +71,14 @@ export type LocalFactoryResult = {
   partial: boolean;
   errors: FactoryError[];
   meta: {
-    fromBlock: string; // bigint -> string
-    toBlock: string;   // bigint -> string
+    fromBlock: string;
+    toBlock: string;
     discoveredContracts: number;
   };
 };
 
 export type CombinedAssetsResponse = {
-  assets: Asset[];      // flat list pour compatibilité UI globale
+  assets: Asset[];
   native: Asset[];
   tokens: Asset[];
   defi: Asset[];
