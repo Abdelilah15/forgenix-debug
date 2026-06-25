@@ -30,6 +30,7 @@ export type Asset = {
   chainId: number;
   chainName?: string;
   chainIcon?: string | null;
+  icon?: string | null;
 
   // classification
   positionType: PositionType;

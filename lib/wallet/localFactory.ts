@@ -3,6 +3,23 @@ import type { Asset, LocalFactoryResult, FactoryError } from "./types";
 import type { ChainConfig } from "./chains";
 import { getCursor, setCursor, getSeenContracts, addSeenContracts } from "./cache";
 
+
+
+const CHAIN_ICONS_MAP: Record<string, { chain: string; token: string }> = {
+  plume: {
+    chain: "https://raw.githubusercontent.com/cryptoicons/images/cards/plum.png",
+    token: "https://cryptologos.cc/logos/ethereum-eth-logo.png"
+  },
+  lisk: {
+    chain: "https://cryptologos.cc/logos/lisk-lsk-logo.png",
+    token: "https://cryptologos.cc/logos/lisk-lsk-logo.png"
+  },
+  morph: {
+    chain: "https://raw.githubusercontent.com/cryptoicons/images/cards/morph.png",
+    token: "https://cryptologos.cc/logos/ethereum-eth-logo.png"
+  }
+};
+
 const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
   "function symbol() view returns (string)",
@@ -90,6 +107,7 @@ async function discoverContractsByTransferLogs(
 async function fetchNative(provider: JsonRpcProvider, cfg: ChainConfig, wallet: string): Promise<Asset> {
   const raw = await retry(() => withTimeout(provider.getBalance(wallet), 7000, "native timeout"));
   const r = BigInt(raw.toString());
+  const icons = CHAIN_ICONS_MAP[cfg.chain.toLowerCase()] || { chain: null, token: null };
 
   return {
     chain: cfg.chain,
@@ -97,13 +115,15 @@ async function fetchNative(provider: JsonRpcProvider, cfg: ChainConfig, wallet: 
     wallet,
     positionType: "wallet",
     assetType: "native",
-    contractAddress: null,
+    contractAddress: "native",
     symbol: cfg.nativeSymbol,
     name: cfg.nativeName,
     decimals: cfg.nativeDecimals,
     rawBalance: r.toString(),
     formattedBalance: formatUnitsSafe(r, cfg.nativeDecimals),
     quantity: Number(formatUnitsSafe(r, cfg.nativeDecimals)),
+    chainIcon: icons.chain,
+    icon: icons.token,
     source: "local-rpc",
     updatedAt: new Date().toISOString(),
   };

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import TokenIcon from "./TokenIcon";
 
 const NetworkAvatar = ({ name, iconUrl, className = "" }: { name: string, iconUrl?: string, className?: string }) => {
     const [hasError, setHasError] = useState(false);
@@ -145,11 +146,7 @@ export default function AssetList({ assets }: { assets: any[] }) {
                                         {/* Colonne 1 : Pas d'overflow-hidden pour laisser respirer le badge entier */}
                                         <div className="flex items-center gap-3">
                                             <div className="relative shrink-0">
-                                                {asset.icon ? (
-                                                    <img src={asset.icon} className="w-8 h-8 rounded-full bg-slate-900 object-cover" alt={asset.symbol} />
-                                                ) : (
-                                                    <img src="/globe.svg" className="w-8 h-8 rounded-full bg-slate-800 p-1 object-cover" alt="Unknown" />
-                                                )}
+                                                <TokenIcon asset={asset} />
                                                 <NetworkAvatar name={asset.chainName} iconUrl={asset.chainIcon} className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-800 z-10 shadow-sm" />
                                             </div>
 
@@ -207,11 +204,7 @@ export default function AssetList({ assets }: { assets: any[] }) {
                                         {/* Colonne 1 : Pas d'overflow-hidden pour laisser respirer le badge entier */}
                                         <div className="flex items-center gap-3">
                                             <div className="relative shrink-0">
-                                                {asset.icon ? (
-                                                    <img src={asset.icon} className="w-8 h-8 rounded-full bg-slate-900 object-cover" alt={asset.symbol} />
-                                                ) : (
-                                                    <img src="/globe.svg" className="w-8 h-8 rounded-full bg-slate-800 p-1 object-cover" alt="Unknown" />
-                                                )}
+                                                <TokenIcon asset={asset} />
                                                 <NetworkAvatar name={asset.chainName} iconUrl={asset.chainIcon} className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-800 z-10 shadow-sm" />
                                             </div>
                                             <div className="min-w-0">
