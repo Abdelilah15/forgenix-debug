@@ -181,6 +181,51 @@ async function fetchDefiAdapters(_provider: JsonRpcProvider, _cfg: ChainConfig, 
 }
 
 export async function runLocalFactory(wallet: string, cfg: ChainConfig): Promise<LocalFactoryResult> {
+
+  async function enrichWithPrices(chainKey: string, nativeAssets: Asset[], tokenAssets: Asset[]): Promise<void> {
+    const config = PRICING_MAP[chainKey.toLowerCase()];
+    if (!config) return;
+
+    try {
+      // 1. Prix de l'actif Natif (Le jeton de Gas : ETH ou LSK)
+      if (nativeAssets.length > 0) {
+        const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${config.nativeId}&vs_currencies=usd`);
+        if (res.ok) {
+          const data = await res.json();
+          const price = data[config.nativeId]?.usd || 0;
+          nativeAssets[0].priceUsd = price;
+          nativeAssets[0].valueUsd = parseFloat(((nativeAssets[0].quantity || 0) * price).toFixed(2));
+        }
+      }
+
+      // 2. Prix des jetons ERC20 (Seulement si le réseau est supporté par CoinGecko)
+      if (tokenAssets.length > 0 && config.platform) {
+        // ✅ BATCHING : On regroupe toutes les adresses séparées par des virgules (1 seule requête API !)
+        const addresses = tokenAssets.map(t => t.contractAddress).filter(Boolean).join(',');
+
+        if (addresses) {
+          const res = await fetch(`https://api.coingecko.com/api/v3/simple/token_price/${config.platform}?contract_addresses=${addresses}&vs_currencies=usd`);
+          if (res.ok) {
+            const data = await res.json();
+            // On distribue les prix reçus dans nos assets
+            for (const token of tokenAssets) {
+              if (token.contractAddress) {
+                const tokenData = data[token.contractAddress.toLowerCase()]; // CoinGecko renvoie les clés en minuscules
+                if (tokenData && tokenData.usd) {
+                  token.priceUsd = tokenData.usd;
+                  token.valueUsd = parseFloat(((token.quantity || 0) * tokenData.usd).toFixed(2));
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      // Fail-safe silencieux : si CoinGecko bloque (Rate Limit), l'application continue sans crasher
+      console.warn(`⚠️ Impossible de récupérer les prix pour ${chainKey}`);
+    }
+  }
+
   const provider = new JsonRpcProvider(cfg.rpcUrl);
   const errors: FactoryError[] = [];
   let partial = false;
@@ -234,6 +279,7 @@ export async function runLocalFactory(wallet: string, cfg: ChainConfig): Promise
     errors.push({ scope: "defi", chain: cfg.chain, reason: e?.message || "defi failed" });
   }
 
+  await enrichWithPrices(cfg.chain, native, tokens);
   await addSeenContracts(cfg.chain, wallet, [...discovered]);
   await setCursor(cfg.chain, wallet, toBlock);
 
