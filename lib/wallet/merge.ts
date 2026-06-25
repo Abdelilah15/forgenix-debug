@@ -79,6 +79,7 @@ export function mergeAssets(params: {
   ];
 
   const all = dedupe([...zerion, ...local]);
+  all.sort((a, b) => (b.valueUsd || 0) - (a.valueUsd || 0));
 
   const native = all.filter((a) => a.assetType === "native");
   const tokens = all.filter((a) => a.positionType === "wallet"); // <- onglet Tokens

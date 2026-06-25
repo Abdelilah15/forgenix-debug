@@ -27,6 +27,104 @@ const PRICING_MAP: Record<string, { platform: string | null; nativeId: string }>
   plume: { platform: null, nativeId: "plume" }  // Idem pour Plume
 };
 
+// Supprime le dictionnaire DEFI_PROTOCOLS_CONFIG ! 
+// On définit juste une liste d'ABIs enrichie pour détecter les standards de Staking/Vaults
+const DEFI_DETECTION_ABI = [
+  "function balanceOf(address) view returns (uint256)",
+  "function asset() view returns (address)",       // Standard ERC4626 (Vaults)
+  "function underlying() view returns (address)",  // Standard Lending (Compound/Aave)
+  "function symbol() view returns (string)",
+  "function name() view returns (string)"
+];
+
+async function fetchDefiAdapters(
+  provider: JsonRpcProvider,
+  cfg: ChainConfig,
+  wallet: string,
+  discoveredContracts: string[] // ✅ On lui passe tous les contrats découverts par les logs !
+): Promise<Asset[]> {
+  const defiAssets: Asset[] = [];
+  const icons = CHAIN_ICONS_MAP[cfg.chain.toLowerCase()] || { chain: null, token: null };
+
+  // On filtre pour éviter de scanner l'adresse native
+  const contractsToTest = discoveredContracts.filter(c => c !== "native");
+
+  for (const contractAddress of contractsToTest) {
+    try {
+      const contract = new Contract(contractAddress, DEFI_DETECTION_ABI, provider);
+
+      // 1. Est-ce que le wallet connecté a un solde dans ce contrat ?
+      const bal = await contract.balanceOf(wallet).catch(() => null);
+      if (!bal) continue;
+
+      const rawBalance = BigInt(bal.toString());
+      if (rawBalance <= BI_ZERO) continue;
+
+      // 2. Détection dynamique : Est-ce un contrat DeFi (Vault/Staking/Lending) ?
+      // On cherche à savoir s'il y a un jeton sous-jacent (underlying asset)
+      let underlyingAddress: string | null = null;
+
+      // Test du standard ERC4626 (.asset())
+      underlyingAddress = await contract.asset().catch(() => null);
+      // Test du standard Lending (.underlying()) si le premier a échoué
+      if (!underlyingAddress) {
+        underlyingAddress = await contract.underlying().catch(() => null);
+      }
+
+      // Si le contrat ne renvoie aucun sous-jacent, ce n'est probablement qu'un simple token ERC20 de portefeuille, pas une position DeFi. On passe au suivant !
+      if (!underlyingAddress) continue;
+
+      // 3. Récupération du nom du protocole/Yield token
+      const [protoSymbol, protoName] = await Promise.all([
+        contract.symbol().catch(() => "DeFi"),
+        contract.name().catch(() => "Yield Position")
+      ]);
+
+      // 4. Lecture des métadonnées du jeton sous-jacent staké
+      const tokenContract = new Contract(underlyingAddress, ERC20_ABI, provider);
+      const [tSymbol, tDecimals] = await Promise.all([
+        tokenContract.symbol().catch(() => "???"),
+        tokenContract.decimals().catch(() => 18)
+      ]);
+
+      const decimals = Number(tDecimals);
+      const formatted = formatUnitsSafe(rawBalance, decimals);
+
+      defiAssets.push({
+        id: `${contractAddress}-defi-${wallet}`,
+        wallet: wallet,
+        chain: cfg.chain,
+        chainId: cfg.chainId,
+        chainName: cfg.name,
+        chainIcon: icons.chain,
+        icon: icons.token,
+        positionType: "defi", // Rangement direct dans l'onglet DeFi
+        assetType: "vault",
+        protocol: protoName,   // Ex: "Plume Liquid Staking"
+        contractAddress: underlyingAddress, // L'adresse du sous-jacent pour CoinGecko (prix)
+        symbol: protoSymbol,  // Ex: "stPLUME"
+        name: `${protoName} (${tSymbol})`,
+        decimals: decimals,
+        rawBalance: rawBalance.toString(),
+        formattedBalance: formatted,
+        quantity: Number(formatted),
+        priceUsd: 0,
+        valueUsd: 0,
+        source: "local-rpc",
+        updatedAt: new Date().toISOString()
+      });
+
+    } catch (err) {
+      // Échec silencieux pour cette adresse, on continue le scan des autres
+      continue;
+    }
+  }
+
+  return defiAssets;
+}
+
+
+
 const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
   "function symbol() view returns (string)",
@@ -174,11 +272,6 @@ async function fetchToken(provider: JsonRpcProvider, cfg: ChainConfig, wallet: s
   };
 }
 
-async function fetchDefiAdapters(_provider: JsonRpcProvider, _cfg: ChainConfig, _wallet: string): Promise<Asset[]> {
-  // TODO: brancher tes adapters DeFi ici
-  // Chaque item doit avoir: positionType: "defi"
-  return [];
-}
 
 export async function runLocalFactory(wallet: string, cfg: ChainConfig): Promise<LocalFactoryResult> {
 
@@ -273,7 +366,7 @@ export async function runLocalFactory(wallet: string, cfg: ChainConfig): Promise
 
   let defi: Asset[] = [];
   try {
-    defi = await fetchDefiAdapters(provider, cfg, wallet);
+    defi = await fetchDefiAdapters(provider, cfg, wallet, allContracts);
   } catch (e: any) {
     partial = true;
     errors.push({ scope: "defi", chain: cfg.chain, reason: e?.message || "defi failed" });
