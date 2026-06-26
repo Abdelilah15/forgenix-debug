@@ -23,8 +23,25 @@ const CHAIN_ICONS_MAP: Record<string, { chain: string; token: string }> = {
 // Dictionnaire pour la valorisation CoinGecko (Prix USD)
 const PRICING_MAP: Record<string, { platform: string | null; nativeId: string }> = {
   lisk: { platform: "lisk", nativeId: "ethereum" },
-  morph: { platform: null, nativeId: "ethereum" }, // "null" car CoinGecko n'a pas encore de plateforme officielle pour les ERC20 de Morph
-  plume: { platform: null, nativeId: "plume" }  // Idem pour Plume
+  morph: { platform: "morph", nativeId: "ethereum" }, 
+  plume: { platform: "plume-network", nativeId: "plume" }
+};
+
+// Liste de jetons prioritaires à vérifier systématiquement par réseau
+const COMMON_TOKENS: Record<string, string[]> = {
+  plume: [
+    "0xba22119ec0310237599052062534f9640822f3e9", // pUSD
+    "0x1c4484307567820120272f3e9365315843472091", // goBTC
+    "0x55d398326f99059ff775485246999027b3197955", // USDT
+  ],
+  lisk: [
+    "0x05D032ac25d002E9923E9f8a3c4d570562145592", // LSK
+    "0x4200000000000000000000000000000000000006", // WETH
+  ],
+  morph: [
+    "0x53035C95f1993c90568937497d8d0912df8039b5", // WETH
+    "0x9999999999999999999999999999999999999999", // Placeholder
+  ]
 };
 
 // ABI enrichie pour détecter les différents standards DeFi
@@ -453,6 +470,10 @@ export async function runLocalFactory(wallet: string, cfg: ChainConfig): Promise
 
   const seen = await getSeenContracts(cfg.chain, wallet);
   for (const c of discovered) seen.add(c.toLowerCase());
+
+  // Ajouter les jetons communs à la liste de vérification
+  const common = COMMON_TOKENS[cfg.chain.toLowerCase()] || [];
+  for (const c of common) seen.add(c.toLowerCase());
 
   const tokens: Asset[] = [];
   const allContracts = [...seen];
