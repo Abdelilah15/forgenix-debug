@@ -220,7 +220,7 @@ export default function AssetList({ assets }: { assets: any[] }) {
                                                 <div className="flex items-center gap-2 mt-0.5">
                                                     <p className="text-slate-400 text-[10px] uppercase font-bold truncate">{asset.chainName}</p>
                                                     <span className="bg-blue-900/40 text-blue-300 text-[8px] uppercase font-bold px-1.5 py-0.5 rounded border border-blue-800/50 whitespace-nowrap">
-                                                        {asset.protocolName || asset.positionType.replace('_', ' ')}
+                                                        {asset.protocol || asset.assetType?.replace('_', ' ') || asset.positionType}
                                                     </span>
                                                 </div>
                                             </div>
