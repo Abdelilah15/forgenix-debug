@@ -4,8 +4,106 @@ import { useAccount } from 'wagmi';
 import { ethers } from 'ethers';
 
 // ⚠️ À REMPLACER PAR VOTRE NOUVELLE ADRESSE ET VOTRE NOUVEL ABI APRÈS LE DÉPLOIEMENT
-const FACTORY_ADDRESS = "0x1204FABcbc9d04d334ED731F5089b0478764C1c3";
+const FACTORY_ADDRESS = "0x93a3646d3A81c7fB98cD5D9A1703E848B1ef0205";
 const FACTORY_ABI = [
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "contractAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "contractType",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "creator",
+        "type": "address"
+      }
+    ],
+    "name": "ContractCreated",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "symbol",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "supply",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "tokenURI",
+        "type": "string"
+      }
+    ],
+    "name": "createAdvancedNFT",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "symbol",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "supply",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "tokenURI",
+        "type": "string"
+      }
+    ],
+    "name": "createAdvancedToken",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
   {
     "inputs": [
       {
@@ -60,6 +158,25 @@ const FACTORY_ABI = [
         "internalType": "string",
         "name": "name",
         "type": "string"
+      }
+    ],
+    "name": "createSimpleContract",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
       },
       {
         "internalType": "string",
@@ -85,76 +202,12 @@ const FACTORY_ABI = [
   },
   {
     "inputs": [],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
-    "inputs": [],
-    "name": "FailedDeployment",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "balance",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "needed",
-        "type": "uint256"
-      }
-    ],
-    "name": "InsufficientBalance",
-    "type": "error"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "contractAddress",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "contractType",
-        "type": "string"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "creator",
-        "type": "address"
-      }
-    ],
-    "name": "ContractCreated",
-    "type": "event"
-  },
-  {
-    "inputs": [],
-    "name": "messageImplementation",
+    "name": "ADVANCED_FEE",
     "outputs": [
       {
-        "internalType": "address",
+        "internalType": "uint256",
         "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "nftImplementation",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -175,7 +228,7 @@ const FACTORY_ABI = [
   },
   {
     "inputs": [],
-    "name": "SERVICE_FEE",
+    "name": "STANDARD_FEE",
     "outputs": [
       {
         "internalType": "uint256",
@@ -185,24 +238,13 @@ const FACTORY_ABI = [
     ],
     "stateMutability": "view",
     "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "tokenImplementation",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
   }
 ];
 
 export default function Forger({ initialTab }: { initialTab: string }) {
   const { isConnected } = useAccount();
+
+
   const [activeTab, setActiveTab] = useState(initialTab);
 
   // États globaux
@@ -243,6 +285,46 @@ export default function Forger({ initialTab }: { initialTab: string }) {
 
   const shareText = `🚀 I just deployed a ${getElementType()} contract on ${networkName}!\n\nCreate yours: https://forgnix.vercel.app/forge?tab=${activeTab}\nTrack onchain activity: https://forgnix.vercel.app\n@monx`;
   const encodedShareText = encodeURIComponent(shareText);
+  const currentFeeString = (isAdvancedMode && (activeTab === 'token' || activeTab === 'nft')) ? "0.0002" : "0.00003";
+
+  const handleIPFSUpload = async (): Promise<string> => {
+    if (!mediaFile) throw new Error("Veuillez sélectionner un fichier (Artwork ou Logo).");
+
+    // 1. Upload de l'image via l'API interne sécurisée
+    const formData = new FormData();
+    formData.append("file", mediaFile);
+
+    const fileRes = await fetch("/api/ipfs/file", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!fileRes.ok) throw new Error("Échec de l'upload de l'image vers IPFS.");
+    const fileData = await fileRes.json();
+    const imageUrl = `ipfs://${fileData.ipfsHash}`;
+
+    // 2. Formatage standard ERC-721/1155 (OpenSea standard)
+    const metadata = {
+      name: activeTab === 'nft' ? nftName : tokenName,
+      description: description,
+      image: imageUrl,
+      attributes: [
+        { trait_type: "Déploiement", value: "Forgenix Advanced" }
+      ]
+    };
+
+    // 3. Upload du JSON final
+    const jsonRes = await fetch("/api/ipfs/json", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(metadata),
+    });
+
+    if (!jsonRes.ok) throw new Error("Échec de l'upload des métadonnées.");
+    const jsonData = await jsonRes.json();
+
+    return `ipfs://${jsonData.ipfsHash}`;
+  };
 
   const handleCreate = async () => {
     setIsLoading(true);
@@ -273,20 +355,34 @@ export default function Forger({ initialTab }: { initialTab: string }) {
       const signer = await provider.getSigner();
       const factoryContract = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
 
-      const fee = ethers.parseEther("0.00003");
+      const fee = ethers.parseEther(currentFeeString);
       let tx;
+      let finalTokenURI = "";
+
+      if (isAdvancedMode && (activeTab === 'token' || activeTab === 'nft')) {
+        finalTokenURI = await handleIPFSUpload();
+      }
 
       if (activeTab === 'message') {
         tx = await factoryContract.createMessage(msgText, { value: fee });
+
       } else if (activeTab === 'token') {
-        // Plus tard: Si isAdvancedMode est true, injecter l'URI de l'image/description
-        tx = await factoryContract.createToken(tokenName, tokenSymbol, tokenSupply, { value: fee });
+        if (isAdvancedMode) {
+          tx = await factoryContract.createAdvancedToken(tokenName, tokenSymbol, tokenSupply, finalTokenURI, { value: fee });
+        } else {
+          tx = await factoryContract.createToken(tokenName, tokenSymbol, tokenSupply, { value: fee });
+        }
+
       } else if (activeTab === 'nft') {
-        // Plus tard: Si isAdvancedMode est true, injecter l'URI de l'artwork
-        tx = await factoryContract.createNFT(nftName, nftSymbol, nftSupply, { value: fee });
+        if (isAdvancedMode) {
+          tx = await factoryContract.createAdvancedNFT(nftName, nftSymbol, nftSupply, finalTokenURI, { value: fee });
+        } else {
+          tx = await factoryContract.createNFT(nftName, nftSymbol, nftSupply, { value: fee });
+        }
+
       } else if (activeTab === 'simple') {
-        // ⚠️ La fonction Solidity pour ce contrat doit d'abord être ajoutée
-        // tx = await factoryContract.createSimpleContract(simpleName, { value: fee });
+        tx = await factoryContract.createSimpleContract(simpleName, { value: fee });
+      } else {
         throw new Error("L'ABI du Smart Contract doit être mise à jour pour supporter le Contrat Simple.");
       }
 
@@ -318,6 +414,7 @@ export default function Forger({ initialTab }: { initialTab: string }) {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden mb-8">
@@ -443,7 +540,7 @@ export default function Forger({ initialTab }: { initialTab: string }) {
         <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 flex flex-col items-center">
           <div className="flex justify-between w-full mb-6 text-sm">
             <span className="text-slate-400">Frais de service</span>
-            <span className="text-indigo-400 font-bold">0.00003 ETH</span>
+            <span className="text-indigo-400 font-bold">{currentFeeString} ETH</span>
           </div>
 
           {!isConnected ? (
