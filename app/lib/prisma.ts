@@ -1,7 +1,7 @@
 import 'dotenv/config'; 
 import { PrismaClient } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
-// 👈 Remarquez que nous avons supprimé 'Pool', 'neonConfig' et 'ws'. Prisma v7 gère cela tout seul maintenant !
+
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;

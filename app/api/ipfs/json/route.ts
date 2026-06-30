@@ -3,6 +3,12 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const { isWhiteLabeled, ...metadata } = body;
+
+    if (!isWhiteLabeled) {
+      const branding = "\n\n---\n*Créé avec Forgenix, https://forgenix.vercel.app*";
+      metadata.description = metadata.description ? metadata.description + branding : branding;
+    }
 
     const res = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
       method: "POST",

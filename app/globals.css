@@ -2,10 +2,6 @@
 @import url('https://cdn-uicons.flaticon.com/uicons-brands/css/uicons-brands.css');
 @import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 :root {
   /* Light Mode Colors */
   --background: #F9F9F9;
@@ -43,29 +39,37 @@ body {
   .bg-background {
     background-color: var(--background);
   }
+
   .text-foreground {
     color: var(--foreground);
   }
+
   .bg-card {
     background-color: var(--card-background);
   }
+
   .border-card {
     border-color: var(--border);
   }
+
   .text-accent {
     color: var(--accent);
   }
+
   .text-secondary {
     color: var(--text-secondary);
   }
+
   .hover\:bg-hover {
     &:hover {
       background-color: var(--hover-background);
     }
   }
+
   .shadow-custom {
     box-shadow: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -2px var(--shadow-color);
   }
+
   .bg-glass {
     background-color: var(--glass-background);
     backdrop-filter: blur(10px);

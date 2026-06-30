@@ -3,18 +3,41 @@ generator client {
   previewFeatures = ["driverAdapters"]
 }
 
-// prisma/schema.prisma
 datasource db {
   provider  = "postgresql"
 }
 
 // La table de notre Indexeur qui stockera l'historique exact
 model PortfolioSnapshot {
-  id          String   @id @default(uuid())
-  address     String   // L'adresse du Wallet
-  timestamp   DateTime // La date et l'heure du snapshot
-  balance     Float    // Le solde total exact en USD
+  id        String   @id @default(uuid())
+  address   String   // L'adresse du Wallet
+  timestamp DateTime // La date et l'heure du snapshot
+  balance   Float    // Le solde total exact en USD
   
-  @@unique([address, timestamp]) // Sécurité : Évite d'enregistrer la même heure en double
-  @@index([address, timestamp])  // Optimisation de vitesse pour l'affichage Recharts
+  @@unique([address, timestamp])
+  @@index([address, timestamp])
+}
+
+// --- NOUVEAUX MODÈLES POUR LES ABONNEMENTS (MARQUE BLANCHE) ---
+
+model User {
+  id            String     @id @default(uuid())
+  walletAddress String     @unique
+  credits       Int        @default(0) // Historique des crédits restants (Optionnel)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  purchases     Purchase[]
+}
+
+model Purchase {
+  id            String   @id @default(uuid())
+  txHash        String   @unique // Sécurité : impossible d'enregistrer deux fois la même transaction
+  walletAddress String
+  tier          Int      // Niveau d'abonnement (ex: 1 pour 50 crédits, 2 pour 100...)
+  creditsAdded  Int      // 50, 100, ou 200
+  amountUSDC    Float    // 0.3, 0.6, ou 1.0
+  createdAt     DateTime @default(now())
+
+  user          User     @relation(fields: [walletAddress], references: [walletAddress])
 }
