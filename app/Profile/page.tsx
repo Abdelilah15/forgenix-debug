@@ -29,6 +29,7 @@ export default function ProfilePage() {
   const [chartData, setChartData] = useState<{ date: string, balance: number }[]>([]);
   const [totalBalance, setTotalBalance] = useState<number | null>(null);
   const [assets, setAssets] = useState([]);
+  const hasFetchedPortfolio = useRef(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -51,6 +52,8 @@ export default function ProfilePage() {
     if (!address) return;
 
     const fetchPortfolioHistory = async () => {
+      hasFetchedPortfolio.current = true;
+
       try {
         const res = await fetch('/api/portfolio', {
           method: 'POST',
@@ -110,6 +113,10 @@ export default function ProfilePage() {
     fetchPortfolioHistory();
   }, [address, timeframe]);
 
+  useEffect(() => {
+    hasFetchedPortfolio.current = false;
+  }, [address, timeframe]);
+
   const handleEditClick = () => { if (user) { setEditUsername(user.username); setEditAvatar(user.avatar); setIsEditing(true); } };
   const handleShuffleAvatar = () => { setEditAvatar(`https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${Math.random().toString(36).substring(7)}`); };
   const handleSave = async () => {
@@ -127,7 +134,7 @@ export default function ProfilePage() {
           {/* CARD 1 : Info */}
           <div className="bg-card border border-card rounded-2xl p-6 flex flex-col items-center justify-center text-center relative overflow-hidden min-h-[320px]">
             <div className="absolute top-0 left-0 w-full h-24 bg-accent/10"></div>
-            
+
             {!isEditing ? (
               <div className="relative z-10 w-full flex flex-col items-center animate-in fade-in zoom-in duration-300">
                 {/* Removed borders from avatar */}
@@ -210,7 +217,7 @@ export default function ProfilePage() {
           <button onClick={() => setActiveTab('details')} className={`flex-1 flex justify-center py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'details' ? 'bg-background text-[#2b7fff]' : 'text-secondary hover:text-foreground'}`}>Asset Details</button>
           <button onClick={() => setActiveTab('analysis')} className={`flex-1 flex justify-center py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'analysis' ? 'bg-background text-[#2b7fff]' : 'text-secondary hover:text-foreground'}`}>Portfolio Analysis</button>
         </div>
-        
+
         <div className="min-h-[300px] rounded-2xl bg-card border border-card p-6">
           {activeTab === 'details' ? (
             <AssetList assets={assets} />
