@@ -132,23 +132,14 @@ export async function POST(req: NextRequest) {
         // ====================================================================
         // 2) LANCEMENT DE L'ORCHESTRATEUR GLOBAL (API MULTIPLES)
         // ====================================================================
-
+        
         let allAssetsResponse = { assets: [], partial: false, errors: [] as ApiError[] };
-
+        
         try {
-            // On limite le temps de réponse total de toutes les API à 10 secondes
-            const timeoutPromise = new Promise<any>((_, reject) =>
-                // On augmente le délai à 25 secondes (25000 ms) pour laisser le temps à CoinStats de scanner
-                setTimeout(() => reject(new Error("Timeout global des APIs")), 15000)
-            );
-
-            // fetchAllWalletAssets gère désormais en interne Zerion (et bientôt Zapper/Coinstats)
-            allAssetsResponse = await Promise.race([
-                fetchAllWalletAssets(safeAddress),
-                timeoutPromise
-            ]);
+            // C'est désormais l'orchestrateur qui va gérer ses propres limites de temps
+            allAssetsResponse = await fetchAllWalletAssets(safeAddress);
         } catch (e: any) {
-            console.warn("⚠️ Orchestrateur bloqué (Timeout ou Erreur) :", e.message);
+            console.warn("⚠️ Orchestrateur crashé globalement :", e.message);
             allAssetsResponse.partial = true;
             allAssetsResponse.errors.push({ source: "orchestrator", reason: e.message });
         }

@@ -32,18 +32,34 @@ export async function fetchAllWalletAssets(walletAddress: string): Promise<Combi
       console.error("Erreur cache icônes", e); 
   }
 
-  // --- 2. LANCEMENT PARALLÈLE DES DEUX APIS ---
-  // On prépare les requêtes sans utiliser "await" immédiatement
-  const zerionPromise = fetch(`https://api.zerion.io/v1/wallets/${walletAddress}/positions?filter[positions]=no_filter`, {
+  // --- 2. LANCEMENT PARALLÈLE AVEC ABORT CONTROLLER (TIMEOUTS INDIVIDUELS) ---
+  
+  // Utilitaire pour couper proprement une requête si elle est trop longue
+  const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs: number) => {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      
+      try {
+          const response = await fetch(url, { ...options, signal: controller.signal });
+          clearTimeout(id);
+          return response;
+      } catch (error: any) {
+          clearTimeout(id);
+          throw new Error(error.name === 'AbortError' ? `Timeout API après ${timeoutMs/1000}s` : error.message);
+      }
+  };
+
+  // On accorde 8 secondes maximum à Zerion
+  const zerionPromise = fetchWithTimeout(`https://api.zerion.io/v1/wallets/${walletAddress}/positions?filter[positions]=no_filter`, {
       method: 'GET', headers: zerionHeaders, cache: 'no-store'
-  }).then(res => res.ok ? res.json() : Promise.reject(`Zerion HTTP: ${res.status}`));
+  }, 8000).then(res => res.ok ? res.json() : Promise.reject(`Zerion HTTP: ${res.status}`));
 
-  // On utilise l'URL qui a fonctionné pour vous (sans le forceall)
-  const coinstatsPromise = fetch(`https://openapiv1.coinstats.app/v1/wallet/balance?address=${walletAddress}&blockchain=all`, {
+  // On accorde 15 secondes maximum à CoinStats (car c'est plus lent)
+  const coinstatsPromise = fetchWithTimeout(`https://api.coinstats.app/v1/wallet/balance?address=${walletAddress}&blockchain=all`, {
       method: 'GET', headers: csHeaders, cache: 'no-store'
-  }).then(res => res.ok ? res.json() : Promise.reject(`Coinstats HTTP: ${res.status}`));
+  }, 25000).then(res => res.ok ? res.json() : Promise.reject(`Coinstats HTTP: ${res.status}`));
 
-  // Promise.allSettled attend que TOUTES les API aient terminé (en succès ou en échec)
+  // Promise.allSettled encaisse les réussites et les échecs sans faire planter l'autre !
   const [zerionResult, csResult] = await Promise.allSettled([zerionPromise, coinstatsPromise]);
 
   // --- 3. TRAITEMENT DE ZERION ---
