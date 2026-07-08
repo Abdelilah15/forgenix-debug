@@ -140,6 +140,10 @@ export function useDeployer() {
         } catch (err) { }
       }
 
+      if (data.requestWhiteLabel && data.userCredits > 0 && (data.activeTab === 'token' || data.activeTab === 'nft')) {
+        data.onCreditDeducted(data.userCredits - 1);
+      }
+
       setIsModalOpen(true);
       setDeployedAddress(extractedAddress);
       
