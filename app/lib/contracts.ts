@@ -1,4 +1,4 @@
-export const FACTORY_ADDRESS = "0x7e7a731f2dac57ef332498c3e72d3b43781360fc";
+export const FACTORY_ADDRESS = "0xa54ca1e2f00fe3a084c7234ce8a3d40acd819bcb";
 
 export const FACTORY_ABI = [
     {

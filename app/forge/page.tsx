@@ -9,7 +9,11 @@ function ForgeRenderer() {
   const currentTab = searchParams.get('tab') || 'message';
   
   // On définit le titre selon l'onglet
-  const pageTitle = currentTab === 'message' ? "Graver un Message" : currentTab === 'token' ? "Créer un Token ERC-20" : "Lancer un NFT";
+const pageTitle = 
+  currentTab === 'message' ? "Graver un Message" : 
+  currentTab === 'token' ? "Créer un Token ERC-20" : 
+  currentTab === 'b20' ? "Lancer un Token B20" :
+  "Lancer un NFT";
 
   return (
     <DashboardLayout title={pageTitle}>

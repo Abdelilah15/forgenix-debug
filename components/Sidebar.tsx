@@ -81,6 +81,14 @@ export default function Sidebar() {
         </button>
 
         <button
+          onClick={() => router.push('/forge?tab=b20')}
+          className={`cursor-pointer w-full flex items-center py-2.5 rounded-xl transition-all duration-200 ${currentTab === 'b20' ? 'bg-accent/10 text-accent' : 'text-secondary hover:bar-button-hover'} ${isCollapsed ? 'justify-center px-0' : 'px-3 text-sm font-medium'}`}
+        >
+          <i className="fi fi-rr-bolt flex text-lg"></i>
+          {!isCollapsed && <span className='ml-3'>B20 Asset (Base)</span>}
+        </button>
+
+        <button
           onClick={() => router.push('/forge?tab=nft')}
           className={`cursor-pointer w-full flex items-center py-2.5 rounded-xl transition-all duration-200 ${currentTab === 'nft' ? 'bg-accent/10 text-accent' : 'text-secondary hover:bar-button-hover'} ${isCollapsed ? 'justify-center px-0' : 'px-3 text-sm font-medium'}`}
         >

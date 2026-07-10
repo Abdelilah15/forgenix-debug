@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
+import { keccak256, toBytes } from 'viem';
 import { FACTORY_ADDRESS, FACTORY_ABI } from '../lib/contracts';
 
 // We define exactly what data the hook needs to execute a deployment
@@ -16,6 +17,7 @@ export interface DeployFormData {
   simpleName: string;
   tokenSymbol: string;
   tokenSupply: string;
+  decimals: number;
   nftSymbol: string;
   nftSupply: string;
   royaltyFee: string;
@@ -105,7 +107,8 @@ export function useDeployer() {
       let tx;
       let metadataURI = "";
 
-      if (data.isAdvancedMode && (data.activeTab === 'token' || data.activeTab === 'nft' || data.activeTab === 'erc1155')) {
+      // ADDED 'b20' to IPFS condition check
+      if (data.isAdvancedMode && (data.activeTab === 'token' || data.activeTab === 'b20' || data.activeTab === 'nft' || data.activeTab === 'erc1155')) {
         metadataURI = await uploadToIPFS(data);
       }
 
@@ -118,6 +121,19 @@ export function useDeployer() {
           tx = await factoryContract.deployAdvancedERC20(data.tokenName, data.tokenSymbol, data.tokenSupply, metadataURI, data.requestWhiteLabel, { value: fee });
         } else {
           tx = await factoryContract.deploySimpleERC20(data.tokenName, data.tokenSymbol, data.tokenSupply, data.requestWhiteLabel, { value: fee });
+        }
+      } else if (data.activeTab === 'b20') {
+        const b20Decimals = data.decimals || 18;
+        // The Precompile strictly expects the supply to account for decimals
+        const b20SupplyCap = ethers.parseUnits(data.tokenSupply, b20Decimals);
+        
+        // Generate a secure, deterministic salt for the Base precompile factory call
+        const salt = keccak256(toBytes(`forgenix-b20-${data.tokenName}-${Date.now()}`));
+
+        if (data.isAdvancedMode) {
+          tx = await factoryContract.deployAdvancedB20(salt, data.tokenName, data.tokenSymbol, b20Decimals, b20SupplyCap, metadataURI, data.requestWhiteLabel, { value: fee });
+        } else {
+          tx = await factoryContract.deploySimpleB20(salt, data.tokenName, data.tokenSymbol, b20Decimals, b20SupplyCap, data.requestWhiteLabel, { value: fee });
         }
       } else if (data.activeTab === 'nft') {
         if (data.isAdvancedMode) {
@@ -147,14 +163,14 @@ export function useDeployer() {
         } catch (err) { }
       }
 
-      if (data.requestWhiteLabel && data.userCredits > 0 && (data.activeTab === 'token' || data.activeTab === 'nft' || data.activeTab === 'erc1155')) {
+      // ADDED 'b20' to credit deduction condition check
+      if (data.requestWhiteLabel && data.userCredits > 0 && (data.activeTab === 'token' || data.activeTab === 'b20' || data.activeTab === 'nft' || data.activeTab === 'erc1155')) {
         data.onCreditDeducted(data.userCredits - 1);
       }
 
       setIsModalOpen(true);
       setDeployedAddress(extractedAddress);
       
-      // Return true to indicate success so the component can clear its form fields
       return true;
 
     } catch (error: any) {

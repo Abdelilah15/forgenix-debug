@@ -76,6 +76,7 @@ export default function Forger({ initialTab }: { initialTab: string }) {
   const [tokenName, setTokenName] = useState('My Token');
   const [tokenSymbol, setTokenSymbol] = useState('MTK');
   const [tokenSupply, setTokenSupply] = useState('10000');
+  const [decimals, setDecimals] = useState('18');
   const [nftName, setNftName] = useState('My Collection');
   const [nftSymbol, setNftSymbol] = useState('MCN');
   const [nftSupply, setNftSupply] = useState('10');
@@ -96,10 +97,29 @@ export default function Forger({ initialTab }: { initialTab: string }) {
     }
   }, [mediaFile]);
 
-const getElementType = () => activeTab === 'message' ? 'Message' : activeTab === 'token' ? 'ERC-20 Token' : activeTab === 'nft' ? 'NFT' : activeTab === 'erc1155' ? 'ERC-1155 Edition' : 'Basic Contract';  const shareText = `🚀 I just deployed a ${getElementType()} contract on ${networkName}!\n\nCreate yours: https://forgnix.vercel.app/forge?tab=${activeTab}\nTrack onchain activity: https://forgnix.vercel.app\n@monx`;
+  const getElementType = () =>
+    activeTab === 'message' ? 'Message' :
+      activeTab === 'token' ? 'ERC-20 Token' :
+        activeTab === 'b20' ? 'B20 Native Asset' :
+          activeTab === 'nft' ? 'NFT' :
+            activeTab === 'erc1155' ? 'ERC-1155 Edition' : 'Basic Contract';
+  const shareText = `🚀 I just deployed a ${getElementType()} contract on ${networkName}!\n\nCreate yours: https://forgnix.vercel.app/forge?tab=${activeTab}\nTrack onchain activity: https://forgnix.vercel.app\n@monx`;
   const encodedShareText = encodeURIComponent(shareText);
 
   const calculateFee = () => {
+
+    if (activeTab === 'b20') {
+      let base = 0.00005; // B20_SIMPLE_MODE_FEE
+      let wlSurcharge = 0;
+      if (isAdvancedMode) {
+        base = 0.0001; // B20_ADVANCED_MODE_FEE
+        if (requestWhiteLabel && userCredits === 0) wlSurcharge = 0.0001; // WL_B20_ADVANCED_ADDITIONAL
+      } else {
+        if (requestWhiteLabel && userCredits === 0) wlSurcharge = 0.00005; // WL_B20_SIMPLE_ADDITIONAL
+      }
+      return (base + wlSurcharge).toFixed(5);
+    }
+
     let base = 0.00003;
     let wlSurcharge = 0;
     if (isAdvancedMode && (activeTab === 'token' || activeTab === 'nft' || activeTab === 'erc1155')) {
@@ -117,7 +137,7 @@ const getElementType = () => activeTab === 'message' ? 'Message' : activeTab ===
     const file = e.target.files ? e.target.files[0] : null;
     setMediaFile(file);
     if (file) {
-      if (previewUrl) URL.revokeObjectURL(previewUrl); // Évite les fuites de mémoire
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
     } else {
@@ -132,6 +152,7 @@ const getElementType = () => activeTab === 'message' ? 'Message' : activeTab ===
       activeTab, isAdvancedMode, mediaFile, description, nftName, tokenName,
       socials, requestWhiteLabel, msgText, simpleName, tokenSymbol, tokenSupply,
       nftSymbol, nftSupply, royaltyFee, currentFeeString, userCredits, erc1155Amount,
+      decimals: parseInt(decimals) || 18,
       address: address as string | undefined,
       onCreditDeducted: (newCredits) => {
         setUserCredits(newCredits);
@@ -147,30 +168,28 @@ const getElementType = () => activeTab === 'message' ? 'Message' : activeTab ===
 
   // Fonction de rendu dynamique pour les champs Token/NFT selon le mode
   const renderTokenOrNftFields = () => {
-    const isToken = activeTab === 'token';
+    const isToken = activeTab === 'token' || activeTab === 'b20';
 
     // Variables dynamiques selon le tab actif
-    const nameVal = isToken ? tokenName : nftName;
-    const setName = isToken ? setTokenName : setNftName;
-    const symVal = isToken ? tokenSymbol : nftSymbol;
-    const setSym = isToken ? setTokenSymbol : setNftSymbol;
-    const supVal = isToken ? tokenSupply : nftSupply;
-    const setSup = isToken ? setTokenSupply : setNftSupply;
+    const nameVal = activeTab === 'token' || activeTab === 'b20' ? tokenName : nftName;
+    const setName = activeTab === 'token' || activeTab === 'b20' ? setTokenName : setNftName;
+    const symVal = activeTab === 'token' || activeTab === 'b20' ? tokenSymbol : nftSymbol;
+    const setSym = activeTab === 'token' || activeTab === 'b20' ? setTokenSymbol : setNftSymbol;
+    const supVal = activeTab === 'token' || activeTab === 'b20' ? tokenSupply : nftSupply;
+    const setSup = activeTab === 'token' || activeTab === 'b20' ? setTokenSupply : setNftSupply;
 
-    const nameLabel = isToken ? 'Token Name' : 'Collection Name';
-    const namePlaceholder = isToken ? 'e.g. Forgenix Coin' : 'e.g. Bored Ape';
-    const symPlaceholder = isToken ? 'e.g. FRGX' : 'e.g. BAPE';
-    const supLabel = isToken ? 'Total Supply' : 'Number of NFTs to mint';
+    const nameLabel = activeTab === 'b20' ? 'B20 Asset Name' : isToken ? 'Token Name' : 'Collection Name';
+    const namePlaceholder = activeTab === 'b20' ? 'e.g. Base Native Gold' : isToken ? 'e.g. Forgenix Coin' : 'e.g. Bored Ape';
+    const symPlaceholder = activeTab === 'b20' ? 'e.g. BNG' : isToken ? 'e.g. FRGX' : 'e.g. BAPE';
+    const supLabel = activeTab === 'b20' ? 'Initial Supply Cap' : isToken ? 'Total Supply' : 'Number of NFTs to mint';
     const supPlaceholder = isToken ? 'e.g. 1000000' : 'e.g. 10';
     const imageLabel = isToken ? 'Token Logo (PNG, JPG)' : 'Artwork (PNG, JPG, GIF)';
 
     if (isAdvancedMode) {
-      // LAYOUT AVANCÉ : Nom/Symbole à gauche, Image à droite, Supply en dessous
       return (
         <div className="animate-in fade-in duration-500 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Colonne de Gauche : Nom et Symbole */}
-            <div className="md:col-span-2 flex flex-col gap-2">
+            <div className="md:col-span-2 flex flex-col gap-4">
               <div>
                 <label className="block text-sm font-medium text-secondary mb-2">{nameLabel}</label>
                 <input type="text" value={nameVal} onChange={(e) => setName(e.target.value)} className="w-full border border-card rounded-xl p-4 text-foreground focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all" placeholder={namePlaceholder} />
@@ -179,41 +198,35 @@ const getElementType = () => activeTab === 'message' ? 'Message' : activeTab ===
                 <label className="block text-sm font-medium text-secondary mb-2">Symbol</label>
                 <input type="text" value={symVal} onChange={(e) => setSym(e.target.value)} className="w-full border border-card rounded-xl p-4 text-foreground focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all" placeholder={symPlaceholder} />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-secondary mb-2">{supLabel}</label>
-                <input type="number" value={supVal} onChange={(e) => setSup(e.target.value)} className="w-full border border-card rounded-xl p-4 text-foreground focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all" placeholder={supPlaceholder} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-secondary mb-2">{supLabel}</label>
+                  <input type="number" value={supVal} onChange={(e) => setSup(e.target.value)} className="w-full border border-card rounded-xl p-4 text-foreground focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all" placeholder={supPlaceholder} />
+                </div>
+                {activeTab === 'b20' && (
+                  <div>
+                    <label className="block text-sm font-medium text-secondary mb-2">Decimals (6 - 18)</label>
+                    <input type="number" min="6" max="18" value={decimals} onChange={(e) => setDecimals(e.target.value)} className="w-full border border-card rounded-xl p-4 text-foreground focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all" placeholder="18" />
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Colonne de Droite : Uploader d'Image */}
             <div className="md:col-span-1 flex flex-col">
               <label className="block text-sm font-medium text-secondary mb-2">{imageLabel}</label>
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="group relative flex-grow aspect-square border-2 border-dashed border-card hover:border-accent/50 rounded-xl flex items-center justify-center cursor-pointer overflow-hidden transition-colors bg-background"
-              >
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept="image/png, image/jpeg, image/gif"
-                  onChange={handleImageChange}
-                />
+              <div onClick={() => fileInputRef.current?.click()} className="group relative flex-grow aspect-square border-2 border-dashed border-card hover:border-accent/50 rounded-xl flex items-center justify-center cursor-pointer overflow-hidden transition-colors bg-background">
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/png, image/jpeg, image/gif" onChange={handleImageChange} />
                 {previewUrl ? (
                   <>
                     <img src={previewUrl} alt="Preview" className="object-cover w-full h-full absolute inset-0" />
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
-                      <span className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg flex items-center gap-2">
-                        <i className="fi fi-rr-picture"></i> Changer l'image
-                      </span>
+                      <span className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg flex items-center gap-2"><i className="fi fi-rr-picture"></i> Changer l'image</span>
                     </div>
                   </>
                 ) : (
                   <div className="flex flex-col items-center justify-center text-secondary group-hover:text-accent transition-colors p-4 text-center">
                     <i className="fi fi-rr-picture text-3xl mb-2"></i>
-                    <span className="text-xs font-medium bg-card px-3 py-1.5 rounded-lg group-hover:bg-accent/10">
-                      Importer une image
-                    </span>
+                    <span className="text-xs font-medium bg-card px-3 py-1.5 rounded-lg group-hover:bg-accent/10">Importer une image</span>
                   </div>
                 )}
               </div>
@@ -223,7 +236,7 @@ const getElementType = () => activeTab === 'message' ? 'Message' : activeTab ===
       );
     }
 
-    // LAYOUT STANDARD : Grille classique
+    // MODE STANDARD (Pas d'image)
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-500">
         <div>
@@ -234,10 +247,16 @@ const getElementType = () => activeTab === 'message' ? 'Message' : activeTab ===
           <label className="block text-sm font-medium text-secondary mb-2">Symbol</label>
           <input type="text" value={symVal} onChange={(e) => setSym(e.target.value)} className="w-full border border-card rounded-xl p-4 text-foreground focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all" placeholder={symPlaceholder} />
         </div>
-        <div className="md:col-span-2">
+        <div className={activeTab === 'b20' ? "md:col-span-1" : "md:col-span-2"}>
           <label className="block text-sm font-medium text-secondary mb-2">{supLabel}</label>
           <input type="number" value={supVal} onChange={(e) => setSup(e.target.value)} className="w-full border border-card rounded-xl p-4 text-foreground focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all" placeholder={supPlaceholder} />
         </div>
+        {activeTab === 'b20' && (
+          <div className="md:col-span-1">
+            <label className="block text-sm font-medium text-secondary mb-2">Decimals (6 - 18)</label>
+            <input type="number" min="6" max="18" value={decimals} onChange={(e) => setDecimals(e.target.value)} className="w-full border border-card rounded-xl p-4 text-foreground focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all" placeholder="18" />
+          </div>
+        )}
       </div>
     );
   };
@@ -298,7 +317,7 @@ const getElementType = () => activeTab === 'message' ? 'Message' : activeTab ===
         <div className="space-y-6 mb-8">
 
           {/* ADVANCED MODE TOGGLE */}
-          {(activeTab === 'token' || activeTab === 'nft' || activeTab === 'erc1155') && (
+          {(activeTab === 'token' || activeTab === 'b20' || activeTab === 'nft' || activeTab === 'erc1155') && (
             <div className="mb-6 flex items-center animate-in fade-in duration-500">
               <label className="flex items-center cursor-pointer">
                 <div className="relative">
@@ -314,7 +333,7 @@ const getElementType = () => activeTab === 'message' ? 'Message' : activeTab ===
           )}
 
           {/* WHITE LABEL OPTION */}
-          {(activeTab === 'token' || activeTab === 'nft' || activeTab === 'erc1155') && (
+          {(activeTab === 'token' || activeTab === 'b20' || activeTab === 'nft' || activeTab === 'erc1155') && (
             userCredits > 0 ? (
               <div className="p-5 bg-emerald-500/10 rounded-xl animate-in fade-in duration-300 flex items-center justify-between">
                 <div>
@@ -360,11 +379,11 @@ const getElementType = () => activeTab === 'message' ? 'Message' : activeTab ===
           )}
 
           {/* Rendu dynamique des champs Token ou NFT (gère le mode avancé et basique) */}
-          {(activeTab === 'token' || activeTab === 'nft') && renderTokenOrNftFields()}
+          {(activeTab === 'token' || activeTab === 'b20' || activeTab === 'nft') && renderTokenOrNftFields()}
           {activeTab === 'erc1155' && renderERC1155Fields()}
 
           {/* ADVANCED MODE FIELDS (Description & Socials) */}
-          {isAdvancedMode && (activeTab === 'token' || activeTab === 'nft' || activeTab === 'erc1155') && (
+          {isAdvancedMode && (activeTab === 'token' || activeTab === 'b20' || activeTab === 'nft' || activeTab === 'erc1155') && (
             <div className=" animate-in slide-in-from-top-4 duration-300 pt-2">
               <h4 className="text-accent font-medium mb-4 flex items-center gap-2">Advanced Settings</h4>
               <div className="space-y-5">
