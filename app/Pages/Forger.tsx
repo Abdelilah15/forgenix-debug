@@ -8,6 +8,8 @@ import SuccessModal from '../../components/forge/SuccessModal';
 import PricingWarningModal from '../../components/forge/PricingWarningModal';
 import { useDeployer } from '../../app/hooks/useDeployer';
 import DeploymentHistory from '../../components/forge/DeploymentHistory';
+import DeploymentModal from '../../components/forge/DeploymentModal'; // Ajustez le chemin si besoin
+import { DeploymentRecord } from '../../components/forge/DeploymentHistory';
 
 
 
@@ -26,6 +28,7 @@ export default function Forger({ initialTab }: { initialTab: string }) {
   // States pour l'aperçu de l'image
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedRecord, setSelectedRecord] = useState<DeploymentRecord | null>(null);
 
   // Sync tab & clean previous messages
   useEffect(() => {
@@ -369,7 +372,7 @@ export default function Forger({ initialTab }: { initialTab: string }) {
 
   return (
     <div className="">
-      <div className="bg-card border border-card rounded-2xl overflow-hidden mb-8 p-8">
+      <div className="bg-card border border-card rounded-2xl overflow-hidden mb-4 p-8">
 
         {/* DYNAMIC FORMS */}
         <div className="space-y-6 mb-8">
@@ -528,7 +531,16 @@ export default function Forger({ initialTab }: { initialTab: string }) {
         activeTab={activeTab}
         explorerUrl={explorerUrl}
         refreshTrigger={txHash || "init"}
+        onSelectRecord={setSelectedRecord}
       />
+
+      {selectedRecord && (
+        <DeploymentModal
+          record={selectedRecord}
+          onClose={() => setSelectedRecord(null)}
+          explorerUrl={explorerUrl}
+        />
+      )}
 
     </div>
   );
