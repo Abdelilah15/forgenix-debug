@@ -1,30 +1,37 @@
 import Link from "next/link";
+import React from 'react';
+import Forgenix, { ForgenixLogo, ForgenixText } from "@/components/ui/ForgenixLogo";
+
 
 export default function Footer() {
     return (
-        <footer className="border-4 border-[#4F7CFF] relative mt-32 bg-[#eef5ff] h-[100vh] h-screen pb-10 pt-24">
+        <footer className="relative flex h-screen flex-col items-center justify-end bg-[#0052FF] pb-10 pt-24">            
             {/* Background glow */}
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
                 <div className="absolute left-1/2 top-0 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-[#0052ff]/10 blur-[180px]" />
             </div>
 
-            <div className="relative max-w-7xl px-6">
-                <div className="overflow-hidden rounded-[42px] bg-white shadow-[0_30px_100px_rgba(0,82,255,0.08)]">
+            <div className="relative max-auto w-full max-w-7xl px-6">
+                <div className=" overflow-hidden rounded-[42px] bg-white shadow-[0_30px_100px_rgba(0,82,255,0.08)]">
 
                     {/* ================= CTA ================= */}
 
-                    <div className="border-b border-slate-100 px-10 py-20 lg:px-20">
+                    <div className="border-b border-slate-100 px-10 pt-20 pb-10 lg:px-20">
                         <div className="max-w-4xl">
 
+                            <div className="flex items-center mb-5">
+                                <ForgenixLogo className="text-[#0052FF]" size={128} />
+                                <ForgenixText className="text-[#0052FF]" size={128} hideLetters={['F']} />
+                            </div>
+
                             <h2 className="text-4xl font-bold tracking-tight text-slate-900 md:text-6xl">
-                                Ready to build the next generation
+                                Ready to build
                                 <br />
-                                of smart contracts on Base?
+                                smart contracts on Base?
                             </h2>
 
-                            <p className="mt-8 max-w-2xl text-lg leading-8 text-slate-600">
-                                Deploy B20, ERC20, ERC721A, ERC1155, DAOs and advanced smart
-                                contracts from one modern platform.
+                            <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
+                                Deploy B20, ERC20, ERC721A, ERC1155 token and NFT contracts from one modern platform.
                             </p>
 
                             <Link
@@ -57,19 +64,19 @@ export default function Footer() {
                                     Deploy
                                 </FooterLink>
 
-                                <FooterLink href="/portfolio">
+                                <FooterLink href="/portfolio" disabled>
                                     Portfolio
                                 </FooterLink>
 
-                                <FooterLink href="/analytics">
+                                <FooterLink href="/analytics" disabled>
                                     Analytics
                                 </FooterLink>
 
-                                <FooterLink href="/pricing">
+                                <FooterLink href="/pricing" disabled>
                                     Pricing
                                 </FooterLink>
 
-                                <FooterLink href="/explorer">
+                                <FooterLink  href="/explorer" disabled>
                                     Explorer
                                 </FooterLink>
 
@@ -121,15 +128,15 @@ export default function Footer() {
                                     X (Twitter)
                                 </FooterLink>
 
-                                <FooterLink href="#">
+                                <FooterLink href="#" disabled>
                                     Telegram
                                 </FooterLink>
 
-                                <FooterLink href="#">
+                                <FooterLink href="#" disabled>
                                     YouTube
                                 </FooterLink>
 
-                                <FooterLink href="#">
+                                <FooterLink href="#" disabled>
                                     Blog
                                 </FooterLink>
 
@@ -151,15 +158,15 @@ export default function Footer() {
                         </div>
 
                         <div className="flex gap-6">
-                            <FooterLink href="/privacy">
+                            <FooterLink href="/privacy" disabled>
                                 Privacy
                             </FooterLink>
 
-                            <FooterLink href="/terms">
+                            <FooterLink href="/terms" disabled>
                                 Terms
                             </FooterLink>
 
-                            <FooterLink href="/cookies">
+                            <FooterLink href="/cookies" disabled>
                                 Cookies
                             </FooterLink>
                         </div>
@@ -175,10 +182,23 @@ export default function Footer() {
 function FooterLink({
     href,
     children,
+    disabled = false, // Ajout de la prop
 }: {
     href: string;
     children: React.ReactNode;
+    disabled?: boolean;
 }) {
+    if (disabled) {
+        return (
+            <span
+                className="block text-[15px] font-medium text-slate-400 cursor-not-allowed opacity-60"
+                title="Bientôt disponible"
+            >
+                {children}
+            </span>
+        );
+    }
+
     return (
         <Link
             href={href}

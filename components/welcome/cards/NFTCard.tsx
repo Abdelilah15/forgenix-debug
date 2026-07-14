@@ -44,9 +44,7 @@ export default function NFTCard() {
           </h3>
 
           <p className="mt-5 text-[16px] leading-8 text-gray-400">
-            Build modern NFT collections with ERC-721A or ERC-1155 standards,
-            complete with IPFS metadata, royalties, reveal mechanics and batch
-            minting from a single deployment flow.
+            Deploy ERC-721A and ERC-1155 NFT collections with IPFS metadata.
           </p>
         </div>
 

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Forgenix, { ForgenixLogo, ForgenixText } from "@/components/ui/ForgenixLogo";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -19,11 +20,10 @@ export default function Navbar() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 px-5 pt-5">
       <nav
-        className={`mx-auto flex h-16 max-w-7xl items-center justify-between rounded-full border transition-all duration-300 ${
-          scrolled
+        className={`mx-auto flex h-16 max-w-7xl items-center justify-between rounded-full border transition-all duration-300 ${scrolled
             ? "border-blue-100 bg-white/80 shadow-[0_12px_40px_rgba(0,82,255,.08)] backdrop-blur-2xl"
             : "border-white/40 bg-white/60 backdrop-blur-xl"
-        }`}
+          }`}
       >
         {/* Left */}
 
@@ -34,9 +34,7 @@ export default function Navbar() {
             href="/"
             className="flex items-center gap-3 transition-opacity hover:opacity-90"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0052FF] to-[#6EA8FF] text-lg font-bold text-white shadow-lg shadow-blue-500/20">
-              F
-            </div>
+            <ForgenixLogo className="text-[#0052FF]" size={32} />
 
             <div className="flex flex-col leading-none">
               <span className="text-lg font-bold tracking-tight text-slate-900">
@@ -54,25 +52,27 @@ export default function Navbar() {
           <div className="hidden items-center gap-8 lg:flex">
             <NavLink href="/">Home</NavLink>
 
-            <NavLink href="/contracts">Contracts</NavLink>
+            {/* Liens désactivés */}
+            <NavLink href="/contracts" disabled>Contracts</NavLink>
 
             <NavLink href="/b20">B20</NavLink>
 
-            <NavLink href="/portfolio">Portfolio</NavLink>
+            <NavLink href="/portfolio" disabled>Portfolio</NavLink>
 
-            <NavLink href="/pricing">Pricing</NavLink>
+            <NavLink href="/pricing" disabled>Pricing</NavLink>
           </div>
         </div>
 
         {/* Right */}
 
         <div className="flex items-center gap-3 pr-3">
-          <Link
-            href="/docs"
-            className="hidden rounded-full px-5 py-2 text-sm font-medium text-slate-600 transition hover:bg-white lg:block"
+          {/* Documentation désactivée avec style de bouton inactif */}
+          <span
+            className="hidden cursor-not-allowed rounded-full px-5 py-2 text-sm font-medium text-slate-400 opacity-60 lg:block"
+            title="Bientôt disponible"
           >
             Documentation
-          </Link>
+          </span>
 
           <Link
             href="/dashboard"
@@ -89,10 +89,25 @@ export default function Navbar() {
 function NavLink({
   href,
   children,
+  disabled = false, // Ajout de la propriété
 }: {
   href: string;
   children: React.ReactNode;
+  disabled?: boolean;
 }) {
+  // Rendu si le lien est désactivé
+  if (disabled) {
+    return (
+      <span
+        className="relative cursor-not-allowed text-[15px] font-medium text-slate-400 opacity-60"
+        title="Bientôt disponible"
+      >
+        {children}
+      </span>
+    );
+  }
+
+  // Rendu normal si le lien est actif
   return (
     <Link
       href={href}

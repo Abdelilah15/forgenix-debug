@@ -6,11 +6,11 @@ import BackgroundGlow from "./BackgroundGlow";
 
 export default function Hero() {
   return (
-    <section className="relative isolate overflow-hidden pt-36 pb-28 lg:min-h-screen">
+    <section className="relative flex isolate overflow-hidden pt-36 pb-28 lg:min-h-screen">
       {/* Background */}
       <BackgroundGlow />
 
-      <div style={{justifyContent:"center"}} className="relative mx-auto flex max-w-7xl flex-col items-center px-6">
+      <div style={{ justifyContent: "center" }} className="relative mx-auto flex max-w-7xl flex-col items-center px-6">
 
         {/* Badge */}
 
@@ -35,8 +35,7 @@ export default function Hero() {
           </h1>
 
           <p className="mx-auto mt-8 max-w-3xl text-lg leading-8 text-slate-600 md:text-xl">
-            Deploy B20, ERC20, ERC721A, ERC1155, DAOs and advanced smart
-            contracts from one modern platform built for builders.
+            Deploy B20, ERC20, ERC721A, and ERC1155 contracts on Base from one simple platform.
           </p>
 
         </div>
@@ -52,12 +51,14 @@ export default function Hero() {
             Launch App
           </Link>
 
-          <Link
-            href="/contracts"
+          <a
+            href="https://docs.base.org/get-started/base"
+            target="_blank"
+            rel="noopener noreferrer"
             className="rounded-full border border-blue-100 bg-white/80 px-8 py-4 text-base font-semibold text-slate-800 backdrop-blur-xl transition-all duration-300 hover:border-blue-200 hover:bg-white"
           >
-            Explore Contracts
-          </Link>
+            Explore Base docs
+          </a>
 
         </div>
 

@@ -44,8 +44,7 @@ export default function B20Card() {
           </h3>
 
           <p className="mt-5 text-[16px] leading-8 text-gray-400">
-            Deploy native Base assets and production-ready stablecoins with
-            professional tooling, flexible configuration and secure deployment.
+            Deploy native Base assets and stablecoins simply and securely.
           </p>
         </div>
 

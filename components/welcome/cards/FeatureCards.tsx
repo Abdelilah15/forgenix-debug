@@ -6,7 +6,7 @@ export default function FeatureCards() {
   return (
     <section
       id="builders"
-      className="border-4 border-[#4F7CFF] relative flex h-[100vh] items-center bg-[#F9F9F9] py-28"
+      className="relative flex h-[100vh] items-center bg-[#F9F9F9] py-28"
     >
       <div className="mx-auto flex w-full max-w-7xl flex-col px-6 lg:px-10">
         {/* Section Heading */}
@@ -16,16 +16,15 @@ export default function FeatureCards() {
           </span>
 
           <h2 className="mt-8 text-4xl font-bold leading-tight tracking-tight text-[#111111] md:text-6xl">
-            Deploy Every Contract
+            Deploy Token & NFT
             <br />
-            You Need on{" "}
+            Contracts on{" "}
             <span className="text-[#4F7CFF]">Base</span>
           </h2>
 
           <p className="mx-auto mt-8 max-w-2xl text-lg leading-8 text-zinc-600">
             Launch native B20 assets, ERC20 tokens and NFT collections
-            through one professional deployment platform designed for
-            builders.
+            through one deployment platform.
           </p>
         </div>
 

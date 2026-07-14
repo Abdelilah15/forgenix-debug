@@ -44,8 +44,7 @@ export default function ERC20Card() {
           </h3>
 
           <p className="mt-5 text-[16px] leading-8 text-gray-400">
-            Launch secure ERC20 tokens across Ethereum and every EVM-compatible
-            network with advanced tokenomics and flexible deployment options.
+            Launch secure ERC20 tokens on Base with fast, simple deployment.
           </p>
         </div>
 
