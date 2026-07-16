@@ -10,7 +10,7 @@ export default function DashboardPage() {
       <DashboardLayout title="Dashboard">
         
         {/* Contenu "Coming Soon" qui remplace l'ancien HomeContent */}
-        <div className="bg-card border border-card p-10 rounded-2xl flex flex-col items-center justify-center text-center min-h-[50vh] animate-in fade-in duration-500">
+        <div className="bg-card p-10 rounded-2xl flex flex-col items-center justify-center text-center min-h-[50vh] animate-in fade-in duration-500">
           <div className="text-5xl mb-6 opacity-80">⚡</div>
           <h3 className="text-2xl font-bold text-foreground mb-4">
             Dashboard Coming Soon

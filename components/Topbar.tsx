@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 interface TopbarProps {
   title?: string;
+  setIsMobileMenuOpen?: (val: boolean) => void;
 }
 
 interface UserProfile {
@@ -14,7 +15,7 @@ interface UserProfile {
   avatar?: string;
 }
 
-export default function Topbar({ title }: TopbarProps) {
+export default function Topbar({ title, setIsMobileMenuOpen }: TopbarProps) {
   const { disconnect } = useDisconnect();
   const { address, isConnected } = useAccount();
   const router = useRouter();
@@ -22,7 +23,6 @@ export default function Topbar({ title }: TopbarProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Load profile from local storage to prevent hydration mismatch / blinking
   const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
     if (typeof window !== 'undefined') {
       const cached = localStorage.getItem('forgenix_profile');
@@ -36,16 +36,12 @@ export default function Topbar({ title }: TopbarProps) {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-
-      setTimeout(() => {
-        setCopied(false);
-      }, 1500);
+      setTimeout(() => setCopied(false), 1500);
     } catch (error) {
       console.error("Failed to copy address:", error);
     }
   };
 
-  // Close dropdown on outside click (cleaned up duplicate useEffect)
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -56,7 +52,6 @@ export default function Topbar({ title }: TopbarProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch user data from database
   const fetchUser = async () => {
     if (isConnected && address) {
       try {
@@ -79,25 +74,29 @@ export default function Topbar({ title }: TopbarProps) {
     }
   };
 
-  // Normal load
-  useEffect(() => {
-    fetchUser();
-  }, [isConnected, address]);
+  useEffect(() => { fetchUser(); }, [isConnected, address]);
 
-  // Listen for custom profile update events
   useEffect(() => {
     window.addEventListener('profileUpdated', fetchUser);
-    return () => {
-      window.removeEventListener('profileUpdated', fetchUser);
-    };
+    return () => window.removeEventListener('profileUpdated', fetchUser);
   }, [isConnected, address]);
 
   return (
-    // Removed bg-glass, border-b, border-card, and shadow-custom for flat look
-    <header className="h-20 px-8 flex justify-between items-center z-10 flex-shrink-0 bg-bar">
-      <h2 className="text-lg font-semibold text-foreground">
-        {title || "Forgenix"}
-      </h2>
+    <header className="h-16 md:h-20 px-4 md:px-8 flex justify-between items-center z-10 flex-shrink-0 bg-bar">
+      
+      <div className="flex items-center gap-3">
+        {/* BOUTON MENU MOBILE */}
+        <button 
+          onClick={() => setIsMobileMenuOpen && setIsMobileMenuOpen(true)}
+          className="md:hidden p-2 text-foreground rounded-lg bg-card border border-card"
+        >
+          <i className="fi fi-rr-menu-burger flex text-[#71717A]"></i>
+        </button>
+
+        <h2 className="text-base md:text-lg font-semibold text-foreground truncate max-w-[120px] md:max-w-none">
+          {title || "Forgenix"}
+        </h2>
+      </div>
 
       <ConnectButton.Custom>
         {({ account, chain, openChainModal, openConnectModal, authenticationStatus, mounted }) => {
@@ -109,96 +108,65 @@ export default function Topbar({ title }: TopbarProps) {
               {(() => {
                 if (!connected) {
                   return (
-                    // Removed shadows for flat design
-                    <button onClick={openConnectModal} type="button" className="bg-[#2b7fff] hover:bg-[#155dfc] text-white font-semibold py-2.5 px-6 rounded-xl transition-colors flex items-center gap-2 cursor-pointer">
-                      <i className="fi fi-rr-wallet"></i> Connect Wallet
+                    <button onClick={openConnectModal} type="button" className="bg-[#2b7fff] hover:bg-[#155dfc] text-white font-semibold py-2 md:py-2.5 px-4 md:px-6 rounded-xl transition-colors flex items-center gap-2 cursor-pointer text-sm md:text-base">
+                      <i className="fi fi-rr-wallet"></i> <span className="hidden md:inline">Connect Wallet</span>
                     </button>
                   );
                 }
 
                 if (chain.unsupported) {
                   return (
-                    // Removed borders, using pure color background
-                    <button onClick={openChainModal} type="button" className="text-red-500 border font-semibold py-2 px-4 rounded-xl transition-colors flex items-center gap-2 cursor-pointer">
-                      <i className="fi fi-rr-triangle-warning"></i> Wrong Network
+                    <button onClick={openChainModal} type="button" className="text-red-500 border font-semibold py-2 px-4 rounded-xl transition-colors flex items-center gap-2 cursor-pointer text-sm">
+                      <i className="fi fi-rr-triangle-warning"></i> <span className="hidden md:inline">Wrong Network</span>
                     </button>
                   );
                 }
 
                 return (
-                  <div className="flex items-center gap-4 relative" ref={dropdownRef}>
-
+                  <div className="flex items-center gap-2 md:gap-4 relative" ref={dropdownRef}>
+                    
                     {/* User Profile Dropdown */}
                     <div className="relative">
                       <button
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                         type="button"
-                        className={`flex items-center gap-3 transition-colors py-1.5 pl-4 pr-1.5 rounded-full bg-[#2b7fff] text-white ${isDropdownOpen ? 'hover:bg-[#155dfc]' : 'bg-[#2b7fff] hover:bg-[#155dfc]'} cursor-pointer`}
+                        className={`flex items-center gap-2 md:gap-3 transition-colors p-1 md:py-1.5 md:pl-4 md:pr-1.5 rounded-full bg-[#2b7fff] text-white cursor-pointer hover:bg-[#155dfc]`}
                       >
-                        <span className="font-medium text-sm tracking-wide">
+                        <span className="hidden md:inline font-medium text-sm tracking-wide">
                           {userProfile?.username || account.displayName}
                         </span>
 
-                        {/* Removed avatar border and shadow */}
-                        <div className="w-8 h-8 rounded-full border bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center overflow-hidden">
+                        <div className="w-7 h-7 md:w-8 md:h-8 shrink-0 rounded-full border bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center overflow-hidden">
                           {userProfile?.avatar ? (
                             <img src={userProfile.avatar} alt="Profile" className="w-full h-full object-cover" />
                           ) : account.ensAvatar ? (
                             <img src={account.ensAvatar} alt="ENS Avatar" className="w-full h-full object-cover" />
                           ) : (
-                            <i className="fi fi-rr-user text-white text-xs mt-1"></i>
+                            <i className="fi fi-rr-user text-white text-[10px] md:text-xs mt-1"></i>
                           )}
                         </div>
                       </button>
 
                       {isDropdownOpen && (
-                        // Removed borders and heavy shadow from the dropdown menu
                         <div className="absolute right-0 mt-3 w-64 bg-bar border border-card rounded-2xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200 drop-shadow-xl">
-
                           <div className="px-4 py-3 mb-2 bg-hover/30 border-b border-card">
                             <p className="text-sm font-bold text-foreground truncate mb-0.5">
                               {userProfile ? userProfile.username : 'Loading...'}
                             </p>
                             <div className="flex items-center gap-2">
-                              <p
-                                className="flex-1 text-xs font-mono text-secondary truncate"
-                                title={account.address}
-                              >
+                              <p className="flex-1 text-xs font-mono text-secondary truncate" title={account.address}>
                                 {account.address}
                               </p>
-
-                              <button
-                                type="button"
-                                onClick={() => handleCopy(account.address)}
-                                className="p-1.5 rounded-lg hover:bg-hover transition-colors"
-                                title={copied ? "Copied!" : "Copy address"}
-                              >
-                                <i
-                                  className={`fi ${copied ? "fi-rr-check" : "fi-rr-copy"
-                                    } text-xs text-secondary`}
-                                />
+                              <button type="button" onClick={() => handleCopy(account.address)} className="p-1.5 rounded-lg hover:bg-hover transition-colors">
+                                <i className={`fi ${copied ? "fi-rr-check" : "fi-rr-copy"} text-xs text-secondary`} />
                               </button>
                             </div>
                           </div>
                           <div className='pl-2 pr-2 '>
-                            <button
-                              onClick={() => {
-                                router.push('/Profile');
-                                setIsDropdownOpen(false);
-                              }}
-                              className="w-full text-left px-4 py-2.5 text-sm text-secondary rounded-xl hover:bar-button-hover hover:text-foreground transition-colors flex items-center gap-3"
-                            >
+                            <button onClick={() => { router.push('/Profile'); setIsDropdownOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-secondary rounded-xl hover:bar-button-hover hover:text-foreground transition-colors flex items-center gap-3">
                               <i className="fi fi-rr-user text-secondary"></i> Profile
                             </button>
-
-                            <button
-                              onClick={() => {
-                                disconnect();
-                                localStorage.removeItem('forgenix_profile');
-                                setIsDropdownOpen(false);
-                              }}
-                              className="w-full text-left px-4 py-2.5 text-sm text-red-500 rounded-xl hover:bg-red-500/10 transition-colors flex items-center gap-3"
-                            >
+                            <button onClick={() => { disconnect(); localStorage.removeItem('forgenix_profile'); setIsDropdownOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-red-500 rounded-xl hover:bg-red-500/10 transition-colors flex items-center gap-3">
                               <i className="fi fi-rr-exit"></i> Disconnect
                             </button>
                           </div>
@@ -206,20 +174,25 @@ export default function Topbar({ title }: TopbarProps) {
                       )}
                     </div>
 
-                    {/* Network Selector */}
-                    <button
-                      onClick={openChainModal}
-                      type="button"
-                      // Flat style: bg-card to bg-hover
-                      className="flex items-center gap-2 border border-[#2b7fff] py-2 px-4 rounded-full transition-colors text-foreground font-medium text-sm cursor-pointer"
+                    {/* Network Selector - MODIFIÉ POUR MOBILE */}
+                    <button 
+                      onClick={openChainModal} 
+                      type="button" 
+                      className="flex items-center justify-center gap-0 md:gap-2 border border-[#2b7fff] w-8 h-8 md:w-auto md:h-auto md:py-1.5 md:px-4 rounded-full transition-colors text-foreground font-medium text-sm cursor-pointer"
                     >
-                      {chain.hasIcon && (
-                        <div style={{ background: chain.iconBackground, width: 20, height: 20, borderRadius: 999, overflow: 'hidden' }}>
-                          {chain.iconUrl && (<img alt={chain.name ?? 'Chain icon'} src={chain.iconUrl} style={{ width: 20, height: 20 }} />)}
+                      {chain.hasIcon ? (
+                        <div style={{ background: chain.iconBackground, width: 28, height: 28, borderRadius: 999, overflow: 'hidden' }}>
+                          {chain.iconUrl && (<img alt={chain.name ?? 'Chain icon'} src={chain.iconUrl} style={{ width: 28, height: 28 }} />)}
+                        </div>
+                      ) : (
+                        <div className="w-5 h-5 rounded-full bg-secondary/50 flex items-center justify-center text-[10px] text-white">
+                          {chain.name?.charAt(0) || '?'}
                         </div>
                       )}
-                      <span>{chain.name}</span>
-                      <i className="fi fi-rr-angle-small-down text-secondary mt-1"></i>
+                      
+                      {/* Texte et flèche masqués sur mobile, affichés sur desktop */}
+                      <span className="hidden md:block">{chain.name}</span>
+                      <i className="fi fi-rr-angle-small-down text-secondary mt-1 hidden md:block"></i>
                     </button>
 
                   </div>

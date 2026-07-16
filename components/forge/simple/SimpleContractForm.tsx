@@ -63,15 +63,15 @@ export default function SimpleContractForm() {
         setSelectedRecord={setSelectedRecord}
       >
         <div>
-          <label className="block text-sm font-medium text-secondary mb-2">Contract Name</label>
-          <input 
-            type="text" 
-            value={simpleName} 
-            onChange={(e) => setSimpleName(e.target.value)} 
-            className="w-full border border-card rounded-xl p-4 text-foreground focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all" 
-            placeholder="e.g. MyContract" 
+          <label className="block text-xs md:text-sm font-medium text-secondary mb-1.5 md:mb-2">Contract Name</label>
+          <input
+            type="text"
+            value={simpleName}
+            onChange={(e) => setSimpleName(e.target.value)}
+            className="w-full bg-card border border-card rounded-xl p-2.5 md:p-4 text-sm md:text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all"
+            placeholder="e.g. MyContract"
           />
-          <p className="mt-3 text-sm text-secondary">Deploys a basic Smart Contract, ideal for quick on-chain interaction.</p>
+          <p className="mt-1.5 md:mt-3 text-[11px] md:text-sm text-secondary leading-tight">Deploys a basic Smart Contract, ideal for quick on-chain interaction.</p>
         </div>
       </ForgeLayout>
     </div>
